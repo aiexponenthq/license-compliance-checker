@@ -1,0 +1,6 @@
+:8080 {
+  encode gzip
+  root * /workspace/dist
+  file_server
+  header /* BUNDLE_TOKEN "opa-secret"
+}

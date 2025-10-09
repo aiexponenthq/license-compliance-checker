@@ -1,0 +1,64 @@
+name: ai-research
+version: "1.0"
+description: Policy tailored for AI research workloads with emphasis on dataset licensing and attribution.
+disclaimer: Review final outputs with legal counsel—automated decisions highlight risk but do not replace expert analysis.
+default_context: research
+contexts:
+  research:
+    description: Non-commercial AI research, experimentation, and internal evaluation.
+    allow:
+      - MIT
+      - Apache-2.0
+      - BSD-*
+      - CC-BY-4.0
+      - CC0-1.0
+    deny:
+      - SSPL-1.0
+      - RAIL-*Restricted
+    review:
+      - GPL-*
+      - AGPL-*
+      - CC-BY-SA-*
+      - CC-BY-NC-*
+    deny_reasons:
+      SSPL-1.0: "Service-level restrictions incompatible with research reproducibility."
+      RAIL-*Restricted: "Usage-restricted AI models require explicit approval."
+    review_reasons:
+      GPL-*: "Confirm derivative work scope for trained models."
+      AGPL-*: "Assess obligations for remote inference exposure."
+      CC-BY-SA-*: "ShareAlike licenses can propagate to composite datasets."
+      CC-BY-NC-*: "Non-commercial grants require validation against funding agreements."
+    dual_license_preference: prefer_order
+    preferred_order:
+      - MIT
+      - Apache-2.0
+      - BSD-*
+      - CC-BY-4.0
+    explanation:
+      - Defaults to permissive licenses while surfacing attribution duties.
+      - Dataset-specific restrictions escalate for manual confirmation.
+  publication:
+    description: External sharing of trained models, datasets, or research artifacts.
+    allow:
+      - MIT
+      - Apache-2.0
+      - CC-BY-4.0
+    deny:
+      - CC-BY-NC-*
+      - Proprietary
+    review:
+      - CC-BY-SA-*
+      - GPL-*
+      - AGPL-*
+    deny_reasons:
+      CC-BY-NC-*: "Non-commercial terms conflict with open publication goals."
+      Proprietary: "Proprietary licensing disallows redistribution."
+    review_reasons:
+      CC-BY-SA-*: "ShareAlike clauses may require full derivative disclosure."
+      GPL-*: "Ensure distribution terms align with publication venue requirements."
+      AGPL-*: "Assess remote access obligations before release."
+    dual_license_preference: prefer_order
+    preferred_order:
+      - Apache-2.0
+      - MIT
+      - CC-BY-4.0

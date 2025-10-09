@@ -1,0 +1,7 @@
+version: "3.9"
+
+services:
+  lcc:
+    command: ["lcc", "scan", ".", "--format", "console"]
+    environment:
+      LCC_LOG_LEVEL: DEBUG
