@@ -1,0 +1,10 @@
+# Test requirements for License Compliance Checker
+# Install with: pip install -r requirements-test.txt
+-r requirements.txt
+pytest>=7.4
+pytest-cov>=4.1
+responses>=0.25
+freezegun>=1.4.0
+fakeredis>=2.21.3
+pytest-asyncio>=0.23.0
+aiosqlite>=0.17.0

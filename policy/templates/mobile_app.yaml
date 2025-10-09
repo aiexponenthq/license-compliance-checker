@@ -1,0 +1,49 @@
+name: mobile-app
+version: "1.0"
+description: Mobile application distribution policy optimised for app store compliance.
+disclaimer: Verify obligations with counsel prior to release to any marketplace.
+default_context: app-store
+contexts:
+  app-store:
+    description: Mobile binaries distributed via public app stores.
+    allow:
+      - MIT
+      - Apache-2.0
+      - BSD-*
+      - CC-BY-4.0
+    deny:
+      - GPL-3.0
+      - AGPL-3.0
+      - SSPL-1.0
+    review:
+      - LGPL-*
+      - MPL-2.0
+    deny_reasons:
+      GPL-3.0: "Static linking obligations conflict with app store policies."
+      AGPL-3.0: "Network copyleft is incompatible with closed-source mobile distribution."
+      SSPL-1.0: "Service source disclosure requirements not permitted by app stores."
+    review_reasons:
+      LGPL-*: "Evaluate dynamic vs static linking and provide notice in-app."
+      MPL-2.0: "Assess file-level copyleft impact on bundled libraries."
+    dual_license_preference: avoid_copyleft
+    explanation:
+      - Requires notice generation for all approved components. 
+      - Automatically flags static-link scenarios for manual validation.
+  enterprise:
+    description: Private enterprise app deployment through MDM channels.
+    allow:
+      - MIT
+      - Apache-2.0
+      - BSD-*
+      - LGPL-*
+    deny:
+      - SSPL-1.0
+    review:
+      - GPL-*
+      - AGPL-*
+    deny_reasons:
+      SSPL-1.0: "Not authorised for internal or external distribution."
+    review_reasons:
+      GPL-*: "Confirm compliance with device-level source obligations."
+      AGPL-*: "Assess exposure of network services inside enterprise perimeter."
+    dual_license_preference: most_permissive

@@ -1,0 +1,24 @@
+services:
+  bundle:
+    url: "http://bundle-server:8080"
+    credentials:
+      bearer:
+        token: "${BUNDLE_TOKEN}"
+bundles:
+  lcc:
+    service: bundle
+    resource: bundles/policy.bundle.tar.gz
+    persist: true
+decision_logs:
+  console: true
+  reporting:
+    min_delay_seconds: 10
+    max_delay_seconds: 120
+status:
+  console: true
+  service: bundle
+plugins:
+  bundle:
+    polling:
+      min_delay_seconds: 10
+      max_delay_seconds: 30

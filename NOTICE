@@ -1,0 +1,129 @@
+License Compliance Checker (LCC)
+Copyright 2025 Ajay Pundhir
+
+This product includes software developed by third parties.
+The following is a list of third-party dependencies and their licenses.
+
+=======================================================================
+Core Dependencies
+=======================================================================
+
+rich (>=13.7.0) - MIT License
+  Copyright (c) 2020 Will McGugan
+  https://github.com/Textualize/rich
+
+requests (>=2.31.0) - Apache License 2.0
+  Copyright (c) Kenneth Reitz
+  https://github.com/psf/requests
+
+cachetools (>=5.3.0) - MIT License
+  Copyright (c) 2014-2024 Thomas Kemmer
+  https://github.com/tkem/cachetools
+
+platformdirs (>=4.2.0) - MIT License
+  Copyright (c) 2010-2024 platformdirs contributors
+  https://github.com/platformdirs/platformdirs
+
+packaging (>=23.2) - Apache License 2.0 / BSD 2-Clause
+  Copyright (c) Donald Stufft and individual contributors
+  https://github.com/pypa/packaging
+
+redis (>=5.0.0) - MIT License
+  Copyright (c) 2022-2024 Redis Inc.
+  https://github.com/redis/redis-py
+
+fastapi (>=0.115.0) - MIT License
+  Copyright (c) 2018 Sebastian Ramirez
+  https://github.com/tiangolo/fastapi
+
+uvicorn (>=0.30.0) - BSD 3-Clause License
+  Copyright (c) 2017-present, Encode OSS Ltd.
+  https://github.com/encode/uvicorn
+
+python-jose (>=3.3.0) - MIT License
+  Copyright (c) 2015 Michael Davis
+  https://github.com/mpdavis/python-jose
+
+passlib (>=1.7.4) - BSD License
+  Copyright (c) 2008-2020 Assurance Technologies, LLC
+  https://github.com/glic3rern/passlib
+
+argon2-cffi (>=21.0.0) - MIT License
+  Copyright (c) 2015 Hynek Schlawack
+  https://github.com/hynek/argon2-cffi
+
+python-multipart (>=0.0.6) - Apache License 2.0
+  Copyright (c) 2012-2024 Andrew Dunham
+  https://github.com/andrew-d/python-multipart
+
+slowapi (>=0.1.9) - MIT License
+  Copyright (c) 2020 Laurent Savaete
+  https://github.com/laurentS/slowapi
+
+pydantic (>=2.0.0) - MIT License
+  Copyright (c) 2017-2024 Samuel Colvin
+  https://github.com/pydantic/pydantic
+
+cyclonedx-python-lib (>=5.0.0) - Apache License 2.0
+  Copyright (c) OWASP Foundation
+  https://github.com/CycloneDX/cyclonedx-python-lib
+
+spdx-tools (>=0.8.0) - Apache License 2.0
+  Copyright (c) SPDX contributors
+  https://github.com/spdx/tools-python
+
+packageurl-python (>=0.11.0) - MIT License
+  Copyright (c) the purl authors
+  https://github.com/package-url/packageurl-python
+
+huggingface-hub (>=0.19.0) - Apache License 2.0
+  Copyright (c) 2021 Hugging Face, Inc.
+  https://github.com/huggingface/huggingface_hub
+
+python-gnupg (>=0.5.0) - BSD License
+  Copyright (c) 2008-2024 Vinay Sajip
+  https://github.com/vsajip/python-gnupg
+
+sqlalchemy (>=2.0.0) - MIT License
+  Copyright (c) 2005-2024 Michael Bayer and contributors
+  https://github.com/sqlalchemy/sqlalchemy
+
+alembic (>=1.13.0) - MIT License
+  Copyright (c) 2009-2024 Michael Bayer
+  https://github.com/sqlalchemy/alembic
+
+asyncpg (>=0.29.0) - Apache License 2.0
+  Copyright (c) 2016-2024 the asyncpg authors
+  https://github.com/MagicStack/asyncpg
+
+arq (>=0.25.0) - MIT License
+  Copyright (c) 2017-2024 Samuel Colvin
+  https://github.com/samuelcolvin/arq
+
+gitpython (>=3.1.0) - BSD 3-Clause License
+  Copyright (c) 2008-2024 Michael Trier and contributors
+  https://github.com/gitpython-developers/GitPython
+
+openai (>=1.0.0) - Apache License 2.0
+  Copyright (c) OpenAI
+  https://github.com/openai/openai-python
+
+python-dotenv (>=1.0.0) - BSD 3-Clause License
+  Copyright (c) 2014 Saurabh Kumar
+  https://github.com/theskumar/python-dotenv
+
+aiosqlite (>=0.19.0) - MIT License
+  Copyright (c) 2018 Amethyst Reese
+  https://github.com/omnilib/aiosqlite
+
+=======================================================================
+Test Dependencies
+=======================================================================
+
+pytest (>=7.4) - MIT License
+pytest-cov (>=4.1) - MIT License
+responses (>=0.25) - Apache License 2.0
+freezegun (>=1.4.0) - Apache License 2.0
+fakeredis (>=2.21.3) - BSD License
+pytest-asyncio (>=0.23.0) - Apache License 2.0
+aiosqlite (>=0.17.0) - MIT License

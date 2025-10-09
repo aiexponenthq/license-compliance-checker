@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  bundle-server:
+    image: caddy:2
+    environment:
+      BUNDLE_TOKEN: opa-secret
+    volumes:
+      - ../..:/workspace:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+
+  opa:
+    image: openpolicyagent/opa:latest
+    command: ["run", "--server", "--config-file", "/config/opa-config.yaml"]
+    environment:
+      BUNDLE_TOKEN: opa-secret
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./opa-config.yaml:/config/opa-config.yaml:ro
+    depends_on:
+      - bundle-server

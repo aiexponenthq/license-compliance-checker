@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "license-compliance-checker"
+version = "1.0.0"
+description = "License Compliance Checker (LCC) - Enterprise-grade open source compliance tool."
+authors = [
+  { name = "Ajay Pundhir" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+dependencies = [
+  "rich>=13.7.0",
+  "requests>=2.31.0",
+  "cachetools>=5.3.0",
+  "platformdirs>=4.2.0",
+  "packaging>=23.2",
+  "redis>=5.0.0",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "python-jose[cryptography]>=3.3.0",
+  "passlib[argon2]>=1.7.4",
+  "argon2-cffi>=21.0.0",
+  "python-multipart>=0.0.6",
+  "slowapi>=0.1.9",
+  "pydantic[email]>=2.0.0",
+  "cyclonedx-python-lib>=5.0.0",
+  "spdx-tools>=0.8.0",
+  "packageurl-python>=0.11.0",
+  "huggingface-hub>=0.19.0",
+  "python-gnupg>=0.5.0",
+  "sqlalchemy[asyncio]>=2.0.0",
+  "alembic>=1.13.0",
+  "asyncpg>=0.29.0",
+  "arq>=0.25.0",
+  "gitpython>=3.1.0",
+  "openai>=1.0.0",
+  "python-dotenv>=1.0.0",
+  "aiosqlite>=0.19.0"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "responses>=0.25",
+  "freezegun>=1.4.0",
+  "fakeredis>=2.21.3",
+  "pytest-asyncio>=0.23.0",
+  "aiosqlite>=0.17.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/apundhir/license-compliance-checker"
+Documentation = "https://github.com/apundhir/license-compliance-checker#readme"
+Repository = "https://github.com/apundhir/license-compliance-checker"
+Issues = "https://github.com/apundhir/license-compliance-checker/issues"
+Changelog = "https://github.com/apundhir/license-compliance-checker/releases"
+
+[project.scripts]
+lcc = "lcc.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q --disable-warnings"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["lcc"]
+
+[tool.setuptools.package-data]
+"lcc.data.policies" = ["*.yml", "*.yaml"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501", "E701", "B008", "B904", "F821", "B023", "SIM102", "UP045"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lcc"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

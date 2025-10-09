@@ -1,0 +1,107 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    image: lcc:dev
+    entrypoint: []
+    command: [ "uvicorn", "lcc.api.server:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory" ]
+    working_dir: /workspace
+    environment:
+      HOME: /workspace
+      LCC_CACHE_DIR: /var/cache/lcc
+      LCC_DATABASE_URL: postgresql+asyncpg://lcc:${POSTGRES_PASSWORD:-dev_only_password}@postgres:5432/lcc
+      LCC_DB_PATH: /var/lib/lcc/auth.db
+      LCC_REDIS_URL: redis://redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LCC_LOG_LEVEL: INFO
+      LCC_ALLOWED_ORIGINS: http://localhost:3000
+      PYTHONPATH: /workspace/src:/opt/lcc/lib/python3.11/site-packages
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace:rw
+      - lcc-cache:/var/cache/lcc:rw
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - lcc-net
+
+  worker:
+    build: .
+    image: lcc:dev
+    entrypoint: []
+    command: [ "arq", "lcc.worker.worker.WorkerSettings" ]
+    working_dir: /workspace
+    environment:
+      HOME: /workspace
+      LCC_CACHE_DIR: /var/cache/lcc
+      LCC_DATABASE_URL: postgresql+asyncpg://lcc:${POSTGRES_PASSWORD:-dev_only_password}@postgres:5432/lcc
+      LCC_DB_PATH: /var/lib/lcc/auth.db
+      LCC_REDIS_URL: redis://redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LCC_LOG_LEVEL: INFO
+      PYTHONPATH: /workspace/src:/opt/lcc/lib/python3.11/site-packages
+    volumes:
+      - .:/workspace:rw
+      - lcc-cache:/var/cache/lcc:rw
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - lcc-net
+
+  dashboard:
+    build: ./dashboard
+    image: lcc-dashboard:dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - api
+    networks:
+      - lcc-net
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: lcc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_password}
+      POSTGRES_DB: lcc
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - lcc-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U lcc" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - lcc-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  lcc-cache:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  lcc-net:
+    driver: bridge
