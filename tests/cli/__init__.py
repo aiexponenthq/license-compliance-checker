@@ -1,0 +1,2 @@
+"""CLI test suite package."""
+

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "license-compliance-checker"
+version = "0.1.0"
+description = "License Compliance Checker (LCC) Phase 1 foundation implementation."
+authors = [
+  { name = "LCC Contributors" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "rich>=13.7.0",
+  "requests>=2.31.0",
+  "cachetools>=5.3.0",
+  "platformdirs>=4.2.0",
+  "packaging>=23.2",
+  "redis>=5.0.0"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "responses>=0.25",
+  "freezegun>=1.4.0",
+  "fakeredis>=2.21.3"
+]
+
+[project.scripts]
+lcc = "lcc.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q --disable-warnings"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["lcc"]

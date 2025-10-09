@@ -1,0 +1,21 @@
+name: lcc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - typer>=0.9.0
+      - rich>=13.7.0
+      - requests>=2.31.0
+      - cachetools>=5.3.0
+      - platformdirs>=4.2.0
+      - packaging>=23.2
+      - redis>=5.0.0
+      - pytest>=7.4
+      - pytest-cov>=4.1
+      - responses>=0.25
+      - freezegun>=1.4.0
+      - fakeredis>=2.21.3
+      - pre-commit>=3.6.0
+      - isort>=5.13.2

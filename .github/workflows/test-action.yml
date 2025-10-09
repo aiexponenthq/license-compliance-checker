@@ -1,0 +1,14 @@
+name: Test Action
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/license-compliance
+        with:
+          path: .
+          format: json
+          output: lcc-report.json

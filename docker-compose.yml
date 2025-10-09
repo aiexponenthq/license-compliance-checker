@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  lcc:
+    build: .
+    image: lcc:dev
+    entrypoint: []
+    command: ["sleep", "infinity"]
+    working_dir: /workspace
+    user: "1000:1000"
+    environment:
+      LCC_CACHE_DIR: /var/cache/lcc
+      LCC_LOG_LEVEL: INFO
+    volumes:
+      - .:/workspace:rw
+      - lcc-cache:/var/cache/lcc
+    healthcheck:
+      test: ["CMD", "lcc", "--version"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - lcc-net
+
+volumes:
+  lcc-cache:
+    driver: local
+
+networks:
+  lcc-net:
+    driver: bridge

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lcc-api
+  labels:
+    app: lcc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lcc
+  template:
+    metadata:
+      labels:
+        app: lcc
+    spec:
+      serviceAccountName: lcc-service-account
+      containers:
+        - name: lcc
+          image: lcc:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: LCC_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: lcc-config
+                  key: LOG_LEVEL
+            - name: LCC_CACHE_DIR
+              value: /var/cache/lcc
+            - name: LCC_API_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: lcc-secrets
+                  key: API_TOKENS
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/lcc
+      volumes:
+        - name: cache
+          emptyDir: {}

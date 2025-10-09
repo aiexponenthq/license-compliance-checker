@@ -1,0 +1,8 @@
+name: copyleft-friendly
+description: Allow copyleft licenses except AGPL
+allow:
+  - GPL-2.0
+  - GPL-3.0
+  - LGPL-3.0
+deny:
+  - AGPL-3.0

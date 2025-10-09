@@ -1,0 +1,52 @@
+name: 'License Compliance Checker'
+description: 'Run License Compliance Checker against a repository path'
+author: 'License Compliance Checker Team'
+branding:
+  icon: 'shield'
+  color: 'blue'
+inputs:
+  path:
+    description: 'Project path to scan'
+    required: false
+    default: '.'
+  format:
+    description: 'Report format (json|markdown|html|csv)'
+    required: false
+    default: 'json'
+  policy:
+    description: 'Policy name to apply'
+    required: false
+  output:
+    description: 'Report output path'
+    required: false
+    default: 'lcc-report.json'
+  threshold:
+    description: 'Confidence threshold for violations'
+    required: false
+    default: '0.5'
+outputs:
+  report:
+    description: 'Path to generated report'
+    value: ${{ steps.scan.outputs.report }}
+runs:
+  using: composite
+  steps:
+    - name: Install LCC
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+    - id: scan
+      name: Run scan
+      shell: bash
+      env:
+        LCC_OPA_URL: ${{ inputs.LCC_OPA_URL || env.LCC_OPA_URL }}
+        LCC_OPA_TOKEN: ${{ inputs.LCC_OPA_TOKEN || env.LCC_OPA_TOKEN }}
+        LCC_REDIS_URL: ${{ inputs.LCC_REDIS_URL || env.LCC_REDIS_URL }}
+      run: |
+        lcc scan "${{ inputs.path }}" \
+          --format "${{ inputs.format }}" \
+          --output "${{ inputs.output }}" \
+          --threshold "${{ inputs.threshold }}" \
+          ${{ inputs.policy && format('--policy {0}', inputs.policy) || '' }}
+        echo "report=${{ inputs.output }}" >> $GITHUB_OUTPUT

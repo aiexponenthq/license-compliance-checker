@@ -1,0 +1,61 @@
+name: enterprise-saas
+version: "1.0"
+description: Enterprise SaaS policy emphasising customer-facing deployments and avoiding network copyleft.
+disclaimer: LCC surfaces policy guidance but does not provide legal advice. Engage counsel for final decisions.
+default_context: saas
+contexts:
+  saas:
+    description: Multi-tenant SaaS platforms and managed services.
+    allow:
+      - MIT
+      - Apache-2.0
+      - BSD-*
+      - ISC
+      - CC-BY-4.0
+    deny:
+      - SSPL-1.0
+      - AGPL-*
+      - GPL-3.0
+    review:
+      - LGPL-*
+      - MPL-*
+      - CC-BY-SA-*
+    deny_reasons:
+      SSPL-1.0: "Service-level source release requirements conflict with SaaS delivery."
+      AGPL-*: "Network copyleft clauses require executive/legal escalation."
+      GPL-3.0: "Strong copyleft is incompatible with hosted proprietary services."
+    review_reasons:
+      LGPL-*: "Verify module boundaries and dynamic linking strategy."
+      MPL-*: "Ensure file-level modifications are trackable for downstream obligations."
+      CC-BY-SA-*: "ShareAlike clauses can propagate obligations to proprietary assets."
+    dual_license_preference: avoid_copyleft
+    explanation:
+      - Prefers permissive licensing to streamline customer onboarding and procurement.
+      - Records rationale for denied and review outcomes for audit readiness.
+    overrides:
+      redis:
+        decision: warning
+        license: BSD-3-Clause
+        reason: Acceptable via commercial agreement when bundled with enterprise tier.
+        explanation: Legal pre-approved Redis usage under commercial license.
+  internal:
+    description: Internal tooling or proof-of-concept deployments not exposed to customers.
+    allow:
+      - MIT
+      - Apache-2.0
+      - BSD-*
+      - ISC
+      - CC-BY-4.0
+    deny:
+      - SSPL-1.0
+    review:
+      - GPL-*
+      - AGPL-*
+      - LGPL-*
+    deny_reasons:
+      SSPL-1.0: "Escalate for legal review before internal evaluation."
+    review_reasons:
+      GPL-*: "Assess reciprocal obligations before adoption."
+      AGPL-*: "Document network distribution plans prior to approval."
+      LGPL-*: "Confirm dynamic linking boundaries with engineering leadership."
+    dual_license_preference: most_permissive

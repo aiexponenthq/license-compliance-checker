@@ -1,0 +1,24 @@
+{
+  "lcc": {
+    "policies": {
+      "name": "default",
+      "version": "1.0",
+      "disclaimer": "Automated policy evaluation only. Confirm outcomes with legal counsel before release.",
+      "default_context": "internal",
+      "contexts": {
+        "internal": {
+          "description": "Default internal development and evaluation context.",
+          "allow": ["MIT", "Apache-2.0", "BSD-*", "ISC"],
+          "deny": ["SSPL-1.0"],
+          "review": ["GPL-*", "AGPL-*"]
+        },
+        "saas": {
+          "description": "Hosted and managed service deployments.",
+          "allow": ["MIT", "Apache-2.0", "BSD-*"] ,
+          "deny": ["SSPL-1.0", "AGPL-*"] ,
+          "review": ["GPL-*"]
+        }
+      }
+    }
+  }
+}
