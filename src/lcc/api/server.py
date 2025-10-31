@@ -629,7 +629,7 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
         except PolicyError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
-    @app.delete("/policies/{policy_name}", status_code=204)
+    @app.delete("/policies/{policy_name}", status_code=204, response_model=None)
     def delete_policy(
         policy_name: str,
         manager: PolicyManager = Depends(get_policy_manager),
