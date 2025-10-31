@@ -24,7 +24,7 @@ from cyclonedx.model import (
 )
 from cyclonedx.model.tool import Tool
 from cyclonedx.model.contact import OrganizationalContact, OrganizationalEntity
-from cyclonedx.model.license import License, LicenseChoice
+from cyclonedx.model.license import DisjunctiveLicense, LicenseExpression
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.component import Component as CdxComponent
 from cyclonedx.model.component import ComponentType as CdxComponentType
@@ -88,7 +88,7 @@ class CycloneDXGenerator:
             name=self.tool_name,
             version=self.tool_version,
         )
-        bom.metadata.tools.add(tool)
+        bom.metadata.tools.tools.add(tool)
 
         # Add authors if provided
         if author:
@@ -122,7 +122,7 @@ class CycloneDXGenerator:
         cdx_component = CdxComponent(
             name=component.name,
             version=component.version if component.version != "*" else "unknown",
-            component_type=cdx_type,
+            type=cdx_type,
             purl=purl,
         )
 
@@ -217,7 +217,7 @@ class CycloneDXGenerator:
 
     def _get_component_licenses(
         self, component: Component, scan_result: ScanResult
-    ) -> Optional[List[LicenseChoice]]:
+    ) -> Optional[List]:
         """Extract licenses for component from scan result."""
 
         # Find the component result
@@ -229,20 +229,30 @@ class CycloneDXGenerator:
         if not comp_result or not comp_result.licenses:
             return None
 
-        license_choices = []
+        licenses = []
 
         for lic_evidence in comp_result.licenses:
-            # Try to parse as SPDX expression first
-            try:
-                license_choice = LicenseChoice(expression=lic_evidence.license_expression)
-                license_choices.append(license_choice)
-            except Exception:
-                # Fall back to license name
-                lic = License(name=lic_evidence.license_expression)
-                license_choice = LicenseChoice(license=lic)
-                license_choices.append(license_choice)
+            # Check if this looks like a SPDX expression (contains OR, AND, WITH)
+            license_str = lic_evidence.license_expression
+            if any(keyword in license_str for keyword in [' OR ', ' AND ', ' WITH ']):
+                # Use LicenseExpression for SPDX expressions
+                try:
+                    license_obj = LicenseExpression(value=license_str)
+                    licenses.append(license_obj)
+                except Exception:
+                    # If parsing fails, fall back to DisjunctiveLicense
+                    license_obj = DisjunctiveLicense(name=license_str)
+                    licenses.append(license_obj)
+            else:
+                # Use DisjunctiveLicense for simple license identifiers
+                # Check if it's an SPDX ID (use 'id') or a name (use 'name')
+                if license_str and not license_str.startswith("LicenseRef-"):
+                    license_obj = DisjunctiveLicense(id=license_str)
+                else:
+                    license_obj = DisjunctiveLicense(name=license_str)
+                licenses.append(license_obj)
 
-        return license_choices if license_choices else None
+        return licenses if licenses else None
 
     def _create_external_references(
         self, component: Component
