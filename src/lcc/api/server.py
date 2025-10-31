@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
 import subprocess
 import tempfile
 import uuid
+import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -79,6 +81,34 @@ class PolicySummaryDTO(BaseModel):
 
 class PolicyDetailDTO(PolicySummaryDTO):
     contexts: List[Dict[str, object]]
+
+
+class PolicyCreateRequest(BaseModel):
+    """Request model for creating a new policy."""
+    name: str = Field(..., description="Unique policy name (alphanumeric and hyphens)", pattern="^[a-zA-Z0-9-]+$")
+    content: str = Field(..., description="Policy content in YAML or JSON format")
+    format: str = Field("yaml", description="Content format: 'yaml' or 'json'")
+
+
+class PolicyUpdateRequest(BaseModel):
+    """Request model for updating an existing policy."""
+    content: str = Field(..., description="Updated policy content in YAML or JSON format")
+    format: str = Field("yaml", description="Content format: 'yaml' or 'json'")
+
+
+class PolicyEvaluateRequest(BaseModel):
+    """Request model for evaluating licenses against a policy."""
+    licenses: List[str] = Field(..., description="List of SPDX license identifiers to evaluate")
+    context: Optional[str] = Field(None, description="Policy context (e.g., 'production', 'development')")
+    component_name: Optional[str] = Field(None, description="Component name for context")
+
+
+class PolicyEvaluateResponse(BaseModel):
+    """Response model for policy evaluation."""
+    status: str = Field(..., description="Evaluation status: 'pass', 'warning', or 'violation'")
+    license: str = Field(..., description="The evaluated license")
+    reason: Optional[str] = Field(None, description="Reason for the decision")
+    matched_rule: Optional[str] = Field(None, description="Which rule matched (allow/deny/review)")
 
 
 def clone_github_repo(repo_url: str, target_dir: Path) -> None:
@@ -432,6 +462,312 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
             disclaimer=str(data.get("disclaimer", "")) or None,
             contexts=contexts,
         )
+
+    @app.post("/policies", response_model=PolicySummaryDTO, status_code=201)
+    def create_policy(
+        payload: PolicyCreateRequest,
+        manager: PolicyManager = Depends(get_policy_manager),
+        current_user: User = Depends(require_role(UserRole.ADMIN))
+    ) -> PolicySummaryDTO:
+        """
+        Create a new policy (Admin only).
+
+        Creates a new policy from YAML or JSON content. The policy name must be unique.
+        Built-in policies cannot be overwritten.
+
+        **Example Request:**
+        ```json
+        {
+          "name": "my-custom-policy",
+          "content": "name: my-custom-policy\\nversion: '1.0'\\ncontexts:\\n  production:\\n    allow:\\n      - MIT\\n      - Apache-2.0",
+          "format": "yaml"
+        }
+        ```
+
+        **Returns:** Created policy summary
+
+        **Errors:**
+        - 400: Invalid policy format or validation error
+        - 403: Insufficient permissions (requires admin role)
+        - 409: Policy with this name already exists
+        """
+        try:
+            # Parse policy content based on format
+            if payload.format.lower() == "json":
+                policy_data = json.loads(payload.content)
+            else:  # default to YAML
+                policy_data = yaml.safe_load(payload.content)
+
+            # Ensure name matches
+            if policy_data.get("name") != payload.name:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Policy name mismatch: request name '{payload.name}' != content name '{policy_data.get('name')}'"
+                )
+
+            # Check if policy already exists
+            existing_policies = manager.list_policies()
+            if payload.name in existing_policies:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Policy '{payload.name}' already exists. Use PUT to update."
+                )
+
+            # Validate policy
+            try:
+                manager.validate_policy(policy_data)
+            except PolicyError as exc:
+                raise HTTPException(status_code=400, detail=f"Policy validation failed: {str(exc)}")
+
+            # Save policy
+            policy_path = manager.policy_dir / f"{payload.name}.yaml"
+            policy_path.write_text(yaml.dump(policy_data, sort_keys=False))
+
+            # Load and return
+            policy = manager.load_policy(payload.name)
+            return PolicySummaryDTO(
+                name=policy.name,
+                description=str(policy.data.get("description", "")),
+                status=str(policy.data.get("status", "active")),
+                lastUpdated=datetime.now(timezone.utc).isoformat(),
+                disclaimer=str(policy.data.get("disclaimer", "")) or None,
+            )
+
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(exc)}")
+        except yaml.YAMLError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid YAML: {str(exc)}")
+        except PolicyError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @app.put("/policies/{policy_name}", response_model=PolicySummaryDTO)
+    def update_policy(
+        policy_name: str,
+        payload: PolicyUpdateRequest,
+        manager: PolicyManager = Depends(get_policy_manager),
+        current_user: User = Depends(require_role(UserRole.ADMIN))
+    ) -> PolicySummaryDTO:
+        """
+        Update an existing policy (Admin only).
+
+        Updates the content of an existing policy. Cannot update built-in policies.
+        If the policy is currently active, it will be reloaded after update.
+
+        **Example Request:**
+        ```json
+        {
+          "content": "name: my-policy\\nversion: '1.1'\\ncontexts:\\n  production:\\n    allow:\\n      - MIT",
+          "format": "yaml"
+        }
+        ```
+
+        **Returns:** Updated policy summary
+
+        **Errors:**
+        - 400: Invalid policy format or validation error
+        - 403: Insufficient permissions (requires admin role)
+        - 404: Policy not found
+        - 409: Cannot update built-in policy
+        """
+        try:
+            # Check if policy exists
+            existing_policies = manager.list_policies()
+            if policy_name not in existing_policies:
+                raise HTTPException(status_code=404, detail=f"Policy '{policy_name}' not found")
+
+            # Check if it's a built-in policy (in src/lcc/data/policies)
+            policy_path = manager.policy_dir / f"{policy_name}.yaml"
+            if not policy_path.exists():
+                policy_path = manager.policy_dir / f"{policy_name}.yml"
+
+            if not policy_path.exists() or not str(policy_path).startswith(str(manager.policy_dir)):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Cannot update built-in policy '{policy_name}'. Create a custom policy instead."
+                )
+
+            # Parse new policy content
+            if payload.format.lower() == "json":
+                policy_data = json.loads(payload.content)
+            else:  # default to YAML
+                policy_data = yaml.safe_load(payload.content)
+
+            # Ensure name matches
+            if policy_data.get("name") != policy_name:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Policy name mismatch: URL name '{policy_name}' != content name '{policy_data.get('name')}'"
+                )
+
+            # Validate policy
+            try:
+                manager.validate_policy(policy_data)
+            except PolicyError as exc:
+                raise HTTPException(status_code=400, detail=f"Policy validation failed: {str(exc)}")
+
+            # Update policy
+            policy_path.write_text(yaml.dump(policy_data, sort_keys=False))
+
+            # Reload if this is the active policy
+            if manager.active_policy() == policy_name:
+                manager.load_policy(policy_name)  # Reload into cache
+
+            # Load and return
+            policy = manager.load_policy(policy_name)
+            return PolicySummaryDTO(
+                name=policy.name,
+                description=str(policy.data.get("description", "")),
+                status=str(policy.data.get("status", "active")),
+                lastUpdated=datetime.now(timezone.utc).isoformat(),
+                disclaimer=str(policy.data.get("disclaimer", "")) or None,
+            )
+
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(exc)}")
+        except yaml.YAMLError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid YAML: {str(exc)}")
+        except PolicyError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @app.delete("/policies/{policy_name}", status_code=204)
+    def delete_policy(
+        policy_name: str,
+        manager: PolicyManager = Depends(get_policy_manager),
+        current_user: User = Depends(require_role(UserRole.ADMIN))
+    ) -> None:
+        """
+        Delete a policy (Admin only).
+
+        Deletes a custom policy. Cannot delete:
+        - Built-in policies
+        - The currently active policy
+
+        **Returns:** 204 No Content on success
+
+        **Errors:**
+        - 400: Cannot delete active policy or built-in policy
+        - 403: Insufficient permissions (requires admin role)
+        - 404: Policy not found
+        """
+        try:
+            # Check if policy exists
+            existing_policies = manager.list_policies()
+            if policy_name not in existing_policies:
+                raise HTTPException(status_code=404, detail=f"Policy '{policy_name}' not found")
+
+            # Check if it's the active policy
+            if manager.active_policy() == policy_name:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot delete active policy '{policy_name}'. Set a different policy as active first."
+                )
+
+            # Check if it's a built-in policy
+            policy_path = manager.policy_dir / f"{policy_name}.yaml"
+            if not policy_path.exists():
+                policy_path = manager.policy_dir / f"{policy_name}.yml"
+
+            if not policy_path.exists():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot delete built-in policy '{policy_name}'."
+                )
+
+            if not str(policy_path).startswith(str(manager.policy_dir)):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot delete built-in policy '{policy_name}'."
+                )
+
+            # Delete policy file
+            policy_path.unlink()
+
+            # Return 204 No Content (no response body)
+            return None
+
+        except PolicyError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @app.post("/policies/{policy_name}/evaluate", response_model=List[PolicyEvaluateResponse])
+    def evaluate_policy_endpoint(
+        policy_name: str,
+        payload: PolicyEvaluateRequest,
+        manager: PolicyManager = Depends(get_policy_manager),
+        current_user: User = Depends(get_current_active_user)
+    ) -> List[PolicyEvaluateResponse]:
+        """
+        Evaluate licenses against a policy.
+
+        Tests one or more license identifiers against a policy's rules.
+        Returns the evaluation result for each license.
+
+        **Example Request:**
+        ```json
+        {
+          "licenses": ["MIT", "GPL-3.0", "Apache-2.0"],
+          "context": "production",
+          "component_name": "my-component"
+        }
+        ```
+
+        **Example Response:**
+        ```json
+        [
+          {
+            "status": "pass",
+            "license": "MIT",
+            "reason": null,
+            "matched_rule": "allow"
+          },
+          {
+            "status": "violation",
+            "license": "GPL-3.0",
+            "reason": "Strong copyleft incompatible with proprietary software",
+            "matched_rule": "deny"
+          },
+          {
+            "status": "pass",
+            "license": "Apache-2.0",
+            "reason": null,
+            "matched_rule": "allow"
+          }
+        ]
+        ```
+
+        **Returns:** List of evaluation results
+
+        **Errors:**
+        - 404: Policy not found
+        - 400: Invalid policy or evaluation error
+        """
+        try:
+            # Load policy
+            policy = manager.load_policy(policy_name)
+        except PolicyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+
+        try:
+            # Evaluate each license
+            results = []
+            for license_id in payload.licenses:
+                decision = evaluate_policy(
+                    policy.data,
+                    [license_id],
+                    context=payload.context,
+                    component_name=payload.component_name
+                )
+
+                results.append(PolicyEvaluateResponse(
+                    status=decision.status,
+                    license=license_id,
+                    reason=decision.reason,
+                    matched_rule=decision.matched_rule if hasattr(decision, 'matched_rule') else None
+                ))
+
+            return results
+
+        except PolicyError as exc:
+            raise HTTPException(status_code=400, detail=f"Policy evaluation failed: {str(exc)}")
 
     return app
 
