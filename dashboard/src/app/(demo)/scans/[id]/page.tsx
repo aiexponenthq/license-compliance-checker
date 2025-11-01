@@ -143,11 +143,23 @@ export default function ScanDetailPage() {
   return (
     <ContentLayout title="Scan Details">
       <div className="space-y-6">
-        {/* Back Button */}
-        <Button variant="outline" onClick={() => router.push("/scans")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Scans
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => router.push("/scans")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Scans
+          </Button>
+          {summary.warnings > 0 && (
+            <Button
+              variant="default"
+              onClick={() => router.push(`/scans/${scanId}/warnings`)}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              View {summary.warnings} Warning{summary.warnings !== 1 ? "s" : ""}
+            </Button>
+          )}
+        </div>
 
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">

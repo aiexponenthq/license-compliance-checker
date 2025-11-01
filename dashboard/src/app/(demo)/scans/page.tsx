@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getScans, createScan, getPolicies } from "@/lib/api";
+import { getScans, createScan, getPolicies, getScanProgress } from "@/lib/api";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import {
   Card,
@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import {
   ScanSearch,
   Loader2,
@@ -48,6 +49,7 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export default function ScansPage() {
@@ -55,38 +57,102 @@ export default function ScansPage() {
   const [repoUrl, setRepoUrl] = useState("");
   const [projectName, setProjectName] = useState("");
   const [selectedPolicy, setSelectedPolicy] = useState("");
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: scans, isLoading, error } = useQuery({
     queryKey: ["scans"],
     queryFn: getScans,
     retry: 1,
-    refetchInterval: 30000,
+    // Faster polling when there are running scans, slower when all complete
+    refetchInterval: (data) => {
+      const hasRunning = (Array.isArray(data) && data.some((scan: any) => scan.status.toLowerCase() === "running")) || activeScanId !== null;
+      return hasRunning ? 3000 : 30000;
+    },
   });
 
   const { data: policies, error: policiesError } = useQuery({
     queryKey: ["policies"],
     queryFn: getPolicies,
     retry: 1,
-    // Don't show error, just use empty array if policies fail to load
-    onError: (error) => {
-      console.error("Failed to load policies:", error);
-    },
   });
+
+  // Poll progress for active scan
+  const { data: progress } = useQuery({
+    queryKey: ["scan-progress", activeScanId],
+    queryFn: () => getScanProgress(activeScanId!),
+    enabled: !!activeScanId && !showSuccess,
+    refetchInterval: (data) => {
+      // Stop polling if scan is complete or failed
+      if (data?.status === "complete" || data?.status === "failed") {
+        return false;
+      }
+      return 1500; // Poll every 1.5 seconds
+    },
+    retry: false,
+  });
+
+  // Handle progress completion
+  useEffect(() => {
+    if (progress?.status === "complete" || progress?.status === "failed") {
+      setShowSuccess(true);
+      queryClient.invalidateQueries({ queryKey: ["scans"] });
+
+      // Auto-close modal after showing success for 2 seconds
+      const timer = setTimeout(() => {
+        setIsDialogOpen(false);
+        setActiveScanId(null);
+        setShowSuccess(false);
+        setRepoUrl("");
+        setProjectName("");
+        setSelectedPolicy("");
+
+        // Navigate to scan details if successful
+        if (progress.status === "complete") {
+          router.push(`/scans/${activeScanId}`);
+        }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [progress?.status, activeScanId, queryClient, router]);
 
   const createScanMutation = useMutation({
     mutationFn: (data: { repoUrl: string; projectName: string; policy?: string }) => {
       return createScan(data.repoUrl, data.policy, data.projectName);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["scans"] });
-      setIsDialogOpen(false);
-      setRepoUrl("");
-      setProjectName("");
-      setSelectedPolicy("");
-      toast.success("Scan created successfully! The repository will be cloned and scanned.");
+    onSuccess: (data: any) => {
+      // Clear submission state
+      setIsSubmitting(false);
+
+      const scanId = data.id || data.scan_id;
+
+      // Set active scan to start progress tracking
+      setActiveScanId(scanId);
+
+      // Optimistically add scan to table
+      queryClient.setQueryData(["scans"], (old: any) => {
+        const newScan = {
+          id: scanId,
+          project: data.project || projectName,
+          status: "running",
+          violations: 0,
+          warnings: 0,
+          generatedAt: new Date().toISOString(),
+          durationSeconds: 0,
+        };
+        return [newScan, ...(old || [])];
+      });
+
+      toast.success("Scan started successfully!");
     },
     onError: (error: any) => {
+      // Clear submission state
+      setIsSubmitting(false);
+
       console.error("Scan creation error:", error);
 
       // Handle different error formats
@@ -131,6 +197,9 @@ export default function ScansPage() {
       }
     }
 
+    // Set submitting state IMMEDIATELY to show progress view
+    setIsSubmitting(true);
+
     // Note: Currently scans /workspace, GitHub cloning to be implemented in backend
     createScanMutation.mutate({
       repoUrl: repoUrl.trim(),
@@ -172,6 +241,21 @@ export default function ScansPage() {
     }
   };
 
+  // Helper function to get color class for scan stages
+  const getStageColor = (stage: string | undefined) => {
+    if (!stage) return "text-gray-600";
+
+    const stageLower = stage.toLowerCase();
+    if (stageLower.includes("cloning")) return "text-blue-600";
+    if (stageLower.includes("detecting")) return "text-purple-600";
+    if (stageLower.includes("parsing")) return "text-indigo-600";
+    if (stageLower.includes("resolving")) return "text-orange-600";
+    if (stageLower.includes("evaluating")) return "text-yellow-600";
+    if (stageLower.includes("reporting")) return "text-green-600";
+    if (stageLower.includes("complete")) return "text-green-700";
+    return "text-primary";
+  };
+
   return (
     <ContentLayout title="Scans">
       <div className="space-y-6">
@@ -190,89 +274,178 @@ export default function ScansPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Scan GitHub Repository</DialogTitle>
-                <DialogDescription>
-                  Enter a GitHub repository URL to clone and scan for license compliance issues.
-                  The repository will be automatically cloned, scanned, and cleaned up.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="repoUrl">GitHub Repository URL *</Label>
-                  <Input
-                    id="repoUrl"
-                    placeholder="https://github.com/username/repository"
-                    value={repoUrl}
-                    onChange={(e) => setRepoUrl(e.target.value)}
-                    disabled={createScanMutation.isPending}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the full GitHub repository URL (e.g., https://github.com/torvalds/linux)
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="projectName">Project Name (Optional)</Label>
-                  <Input
-                    id="projectName"
-                    placeholder="my-project"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    disabled={createScanMutation.isPending}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Optional: Custom project name (defaults to repository name)
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="policy">Compliance Policy (Optional)</Label>
-                  <Select
-                    value={selectedPolicy}
-                    onValueChange={setSelectedPolicy}
-                    disabled={createScanMutation.isPending}
-                  >
-                    <SelectTrigger id="policy">
-                      <SelectValue placeholder="Select a policy" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Policy</SelectItem>
-                      {policies?.map((policy: any) => (
-                        <SelectItem key={policy.name} value={policy.name}>
-                          {policy.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Optional: Evaluate against a specific compliance policy
-                  </p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  disabled={createScanMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateScan}
-                  disabled={createScanMutation.isPending}
-                >
-                  {createScanMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <ScanSearch className="mr-2 h-4 w-4" />
-                      Create Scan
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
+              {/* Show progress view when submitting or scan is active, otherwise show form */}
+              {(activeScanId || isSubmitting) && !showSuccess ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Scanning Repository...</DialogTitle>
+                    <DialogDescription>
+                      Analyzing your repository for license compliance
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-6 space-y-6">
+                    {isSubmitting && !activeScanId ? (
+                      /* Submission state - before scan ID is available */
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">Submitting Scan Request</span>
+                            <span className="text-muted-foreground">Initializing...</span>
+                          </div>
+                          <Progress value={10} className="h-2" />
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span>Sending scan request to server...</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* Real progress - once scan ID is available */
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className={`font-medium ${getStageColor(progress?.current_stage)}`}>
+                              {progress?.current_stage || "Initializing..."}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {progress?.progress_percent || 0}%
+                            </span>
+                          </div>
+                          <Progress value={progress?.progress_percent || 0} className="h-2" />
+                        </div>
+
+                        {/* Stage details */}
+                        <div className="space-y-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span>{progress?.message || "Starting scan..."}</span>
+                          </div>
+
+                          {/* Component counts if available */}
+                          {progress?.components_found !== undefined && progress.components_found > 0 && (
+                            <div className="text-muted-foreground">
+                              {progress.components_resolved || 0} of {progress.components_found} components processed
+                            </div>
+                          )}
+
+                          {/* Elapsed time */}
+                          {progress?.elapsed_seconds !== undefined && (
+                            <div className="text-muted-foreground">
+                              Elapsed: {progress.elapsed_seconds}s
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              ) : showSuccess ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Scan Complete!</DialogTitle>
+                    <DialogDescription>
+                      Your repository has been successfully scanned
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-8 flex flex-col items-center justify-center space-y-4">
+                    <div className="rounded-full bg-green-100 p-4">
+                      <CheckCircle2 className="h-12 w-12 text-green-600" />
+                    </div>
+                    <p className="text-center text-sm text-muted-foreground">
+                      Redirecting to scan results...
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Scan GitHub Repository</DialogTitle>
+                    <DialogDescription>
+                      Enter a GitHub repository URL to clone and scan for license compliance issues.
+                      The repository will be automatically cloned, scanned, and cleaned up.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="repoUrl">GitHub Repository URL *</Label>
+                      <Input
+                        id="repoUrl"
+                        placeholder="https://github.com/username/repository"
+                        value={repoUrl}
+                        onChange={(e) => setRepoUrl(e.target.value)}
+                        disabled={createScanMutation.isPending}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter the full GitHub repository URL (e.g., https://github.com/torvalds/linux)
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="projectName">Project Name (Optional)</Label>
+                      <Input
+                        id="projectName"
+                        placeholder="my-project"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        disabled={createScanMutation.isPending}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Optional: Custom project name (defaults to repository name)
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="policy">Compliance Policy (Optional)</Label>
+                      <Select
+                        value={selectedPolicy}
+                        onValueChange={setSelectedPolicy}
+                        disabled={createScanMutation.isPending}
+                      >
+                        <SelectTrigger id="policy">
+                          <SelectValue placeholder="Select a policy" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Policy</SelectItem>
+                          {policies?.map((policy: any) => (
+                            <SelectItem key={policy.name} value={policy.name}>
+                              {policy.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Optional: Evaluate against a specific compliance policy
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                      disabled={createScanMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreateScan}
+                      disabled={createScanMutation.isPending}
+                    >
+                      {createScanMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <ScanSearch className="mr-2 h-4 w-4" />
+                          Create Scan
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
             </DialogContent>
           </Dialog>
         </div>

@@ -166,6 +166,11 @@ export const createScan = async (repoUrl: string, policy?: string, projectName?:
   return response.data;
 };
 
+export const getScanProgress = async (id: string) => {
+  const response = await api.get(`/scans/${id}/progress`);
+  return response.data;
+};
+
 // Policies
 export const getPolicies = async (): Promise<Policy[]> => {
   const response = await api.get('/policies');
