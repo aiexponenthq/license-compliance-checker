@@ -23,6 +23,8 @@ from slowapi.util import get_remote_address
 
 from lcc.api.repository import ScanRepository
 from lcc.api.auth_routes import create_auth_router
+from lcc.api.progress import progress_tracker, ScanProgress, ScanStage
+from lcc.api.warnings import WarningAnalyzer, WarningsSummary
 from lcc.auth.core import User, UserRole, get_current_active_user, require_role
 from lcc.auth.repository import UserRepository
 from lcc.cache import Cache
@@ -121,18 +123,25 @@ def clone_github_repo(repo_url: str, target_dir: Path) -> None:
     Raises:
         HTTPException: If cloning fails or URL is invalid
     """
-    # Validate GitHub URL
-    github_pattern = r"^https?://(www\.)?github\.com/[\w-]+/[\w.-]+(\.git)?$"
-    if not re.match(github_pattern, repo_url):
+    # Extract and validate GitHub URL - support URLs with paths like /tree/main
+    github_pattern = r"^https?://(www\.)?github\.com/([\w-]+)/([\w.-]+)"
+    match = re.match(github_pattern, repo_url)
+
+    if not match:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid GitHub URL format: {repo_url}. Expected: https://github.com/user/repo"
         )
 
+    # Extract owner and repo name, normalize to base URL
+    owner = match.group(2)
+    repo_name = match.group(3).replace('.git', '')
+    normalized_url = f"https://github.com/{owner}/{repo_name}.git"
+
     try:
         # Clone with depth=1 for faster cloning (shallow clone)
         result = subprocess.run(
-            ["git", "clone", "--depth", "1", repo_url, str(target_dir)],
+            ["git", "clone", "--depth", "1", normalized_url, str(target_dir)],
             capture_output=True,
             text=True,
             timeout=300,  # 5 minute timeout
@@ -301,6 +310,131 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
         )
         return ScanDetailDTO(summary=summary, report=record["report"])
 
+    @app.get("/scans/{scan_id}/progress", response_model=ScanProgress)
+    @limiter.limit("100/minute")
+    def get_scan_progress(
+        request: Request,
+        scan_id: str,
+        current_user: User = Depends(get_current_active_user)
+    ) -> ScanProgress:
+        """
+        Get real-time progress for a running scan.
+
+        Returns progress information including:
+        - Current stage and progress percentage
+        - Elapsed time and estimated remaining time
+        - Components found and resolved
+        - Stage completion history
+        """
+        progress = progress_tracker.get_progress(scan_id)
+        if progress is None:
+            # If no progress tracking, scan might be complete or not started
+            raise HTTPException(
+                status_code=404,
+                detail="No progress information available. Scan may be complete or not found."
+            )
+        return progress
+
+    @app.get("/scans/{scan_id}/warnings", response_model=WarningsSummary)
+    @limiter.limit("100/minute")
+    def get_scan_warnings(
+        request: Request,
+        scan_id: str,
+        repo: ScanRepository = Depends(get_repository),
+        manager: PolicyManager = Depends(get_policy_manager),
+        current_user: User = Depends(get_current_active_user)
+    ) -> WarningsSummary:
+        """
+        Get detailed warning analysis for a scan.
+
+        Returns:
+        - Total warning count
+        - Breakdown by type and severity
+        - Detailed explanation for each warning
+        - Recommendations for addressing warnings
+        """
+        record = repo.get_scan(scan_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Scan not found")
+
+        report = record.get("report", {})
+
+        # Get policy used for this scan
+        policy_name = report.get("meta", {}).get("policy", {}).get("name")
+        if not policy_name:
+            # No policy was used, no warnings to analyze
+            from lcc.api.warnings import WarningsSummary
+            return WarningsSummary(total_warnings=0, warnings=[])
+
+        # Load the policy
+        try:
+            policy_obj = manager.load_policy(policy_name)
+            policy_payload = policy_obj.data  # Extract the dictionary from Policy object
+        except PolicyError:
+            # Policy not found, return empty warnings
+            from lcc.api.warnings import WarningsSummary
+            return WarningsSummary(total_warnings=0, warnings=[])
+
+        # Get findings from report
+        findings = report.get("findings", [])
+        if not findings:
+            from lcc.api.warnings import WarningsSummary
+            return WarningsSummary(total_warnings=0, warnings=[])
+
+        # Re-evaluate each component against the policy to find warnings
+        from lcc.api.warnings import WarningDetail
+        warnings_list: List[WarningDetail] = []
+        context = report.get("meta", {}).get("policy", {}).get("context")
+
+        for finding_data in findings:
+            # Reconstruct finding object structure
+            comp_data = finding_data.get("component", {})
+            resolved_license = finding_data.get("resolved_license", "UNKNOWN")
+
+            # Collect license candidates
+            licenses = [resolved_license] if resolved_license else []
+            metadata = comp_data.get("metadata", {})
+            if isinstance(metadata, dict):
+                meta_licenses = metadata.get("licenses", [])
+                if isinstance(meta_licenses, list):
+                    licenses.extend(str(lic) for lic in meta_licenses)
+            licenses = [lic for lic in licenses if lic] or ["UNKNOWN"]
+
+            # Evaluate against policy
+            decision = evaluate_policy(
+                policy_payload,
+                licenses,
+                context=context,
+                component_name=comp_data.get("name")
+            )
+
+            # If status is "warning", analyze this component
+            if decision.status == "warning":
+                warning = WarningAnalyzer.analyze_component(
+                    name=comp_data.get("name", "Unknown"),
+                    version=comp_data.get("version"),
+                    license_str=resolved_license,
+                    status="warning"
+                )
+                if warning:
+                    warnings_list.append(warning)
+
+        # Build summary
+        from lcc.api.warnings import WarningsSummary
+        by_type: Dict[str, int] = {}
+        by_severity: Dict[str, int] = {}
+
+        for warning in warnings_list:
+            by_type[warning.warning_type] = by_type.get(warning.warning_type, 0) + 1
+            by_severity[warning.severity] = by_severity.get(warning.severity, 0) + 1
+
+        return WarningsSummary(
+            total_warnings=len(warnings_list),
+            by_type=by_type,
+            by_severity=by_severity,
+            warnings=warnings_list
+        )
+
     @app.post("/scans", response_model=ScanSummaryDTO, status_code=201)
     def create_scan(
         payload: ScanRequest,
@@ -324,10 +458,21 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
 
         temp_dir = None
         project_name = None
+        # Generate scan ID upfront for progress tracking
+        scan_id = str(uuid.uuid4())
+
+        # Initialize progress tracking
+        progress_tracker.start_scan(scan_id)
 
         try:
             # Handle GitHub repository URL
             if payload.repo_url:
+                progress_tracker.update_stage(
+                    scan_id,
+                    ScanStage.CLONING,
+                    "Cloning Repository",
+                    f"Cloning repository from {payload.repo_url}"
+                )
                 temp_dir = tempfile.mkdtemp(prefix="lcc_repo_")
                 clone_github_repo(payload.repo_url, Path(temp_dir))
                 project_path = Path(temp_dir)
@@ -340,7 +485,35 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
                     raise HTTPException(status_code=400, detail=f"Path does not exist: {project_path}")
                 project_name = project_path.name
 
+            # Update progress for detection phase
+            progress_tracker.update_stage(
+                scan_id,
+                ScanStage.DETECTING,
+                "Detecting Package Managers",
+                "Detecting package managers and dependencies"
+            )
+
+            # Update progress for scanning phase
+            progress_tracker.update_stage(
+                scan_id,
+                ScanStage.PARSING,
+                "Parsing Dependencies",
+                "Parsing dependency manifests"
+            )
+
             report = scanner.scan(project_path)
+
+            # Update component counts
+            component_count = len(report.findings)
+            progress_tracker.update_components(scan_id, found=component_count)
+
+            # Update progress for resolution phase
+            progress_tracker.update_stage(
+                scan_id,
+                ScanStage.RESOLVING,
+                "Resolving Licenses",
+                f"Resolving licenses for {component_count} components"
+            )
             report.summary.context.setdefault("project_root", str(project_path))
             report.summary.context.setdefault("project", project_name)
             if payload.repo_url:
@@ -349,16 +522,35 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
             policy_payload: Optional[Dict[str, object]] = None
             policy_name: Optional[str] = None
             if payload.policy:
+                progress_tracker.update_stage(
+                    scan_id,
+                    ScanStage.EVALUATING,
+                    "Evaluating Policy",
+                    f"Evaluating against policy: {payload.policy}"
+                )
                 try:
                     policy = manager.load_policy(payload.policy)
                     policy_payload = policy.data
                     policy_name = policy.name
                 except PolicyError as exc:
+                    progress_tracker.set_error(scan_id, str(exc))
                     raise HTTPException(status_code=400, detail=str(exc)) from exc
             elif manager.active_policy():
-                policy = manager.load_policy(manager.active_policy())
-                policy_payload = policy.data
-                policy_name = policy.name
+                progress_tracker.update_stage(
+                    scan_id,
+                    ScanStage.EVALUATING,
+                    "Evaluating Policy",
+                    f"Evaluating against policy: {manager.active_policy()}"
+                )
+                try:
+                    policy = manager.load_policy(manager.active_policy())
+                    policy_payload = policy.data
+                    policy_name = policy.name
+                except PolicyError as exc:
+                    # If active policy can't be loaded, just skip policy evaluation
+                    # instead of failing the scan
+                    logger.warning(f"Could not load active policy '{manager.active_policy()}': {exc}")
+                    pass
 
             analysis = _analyse_report(
                 report,
@@ -366,6 +558,15 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
                 policy_payload=policy_payload,
                 context=payload.context or config.policy_context,
                 unknown_license_treatment=config.unknown_license_treatment,
+                scan_id=scan_id,
+            )
+
+            # Update progress for reporting phase
+            progress_tracker.update_stage(
+                scan_id,
+                ScanStage.REPORTING,
+                "Generating Report",
+                "Generating scan report"
             )
 
             report_payload = _serialize_report(report, policy_name=policy_name, analysis=analysis)
@@ -380,6 +581,9 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
                 report=report_payload,
             )
 
+            # Mark scan as complete
+            progress_tracker.complete_scan(scan_id)
+
             return ScanSummaryDTO(
                 id=analysis["id"],
                 project=analysis["project"],
@@ -390,6 +594,10 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
                 durationSeconds=analysis["duration_seconds"],
                 reportUrl=f"/scans/{analysis['id']}",
             )
+        except Exception as e:
+            # Mark scan as failed on any exception
+            progress_tracker.set_error(scan_id, str(e))
+            raise
         finally:
             # Clean up temporary directory if it was created
             if temp_dir and os.path.exists(temp_dir):
@@ -791,8 +999,10 @@ def _analyse_report(
     policy_payload: Optional[Dict[str, object]] = None,
     context: Optional[str] = None,
     unknown_license_treatment: str = "violation",
+    scan_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    scan_id = str(uuid.uuid4())
+    if scan_id is None:
+        scan_id = str(uuid.uuid4())
     generated_at = report.summary.generated_at.replace(tzinfo=timezone.utc)
     license_distribution: Dict[str, int] = {}
     violations = 0
