@@ -17,8 +17,11 @@ Both backend API and professional frontend dashboard are fully integrated and ru
 Navigate to: **http://localhost:3000/login**
 
 ### 2. Login
-- **Username:** `admin`
-- **Password:** `admin`
+Use the default credentials (configurable via environment variables):
+- **Username:** Check `.env` file or use default `admin`
+- **Password:** Check `.env` file or use default `admin`
+
+> **Note:** Change default credentials in production by setting `LCC_ADMIN_USERNAME` and `LCC_ADMIN_PASSWORD` environment variables.
 
 ### 3. Explore
 After login, you'll have access to:
@@ -33,7 +36,7 @@ After login, you'll have access to:
 - ✅ Live API health monitoring (auto-refresh every 10s)
 - ✅ Total scans, projects, violations, warnings
 - ✅ System status display
-- ✅ Phase 3 completion: 68/68 tests passing
+- ✅ Comprehensive test coverage
 
 ### Scans Management
 - ✅ View complete scan history

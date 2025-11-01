@@ -1,6 +1,6 @@
 # License Compliance Checker (LCC)
 
-Phase 1 (Foundation) focuses on the core license detection engine, multi-source resolution, CLI tooling, and reporting as described in `PRD-v1.2.md`.
+A comprehensive open-source license compliance tool with multi-language support, policy enforcement, and a modern web dashboard. LCC helps organizations automate license detection, policy evaluation, and compliance reporting across their entire software portfolio.
 
 ## Getting Started
 
@@ -154,9 +154,7 @@ Each decision is appended to `~/.lcc/decisions.jsonl`. Override the location via
 - Web dashboard: `dashboard/` (Next.js 15 + Tailwind + Radix UI)
 - Policy templates: `policy/templates/`
 
-See `docs/phase1_todo.md` for delivery tracking.
-
-### Dashboard (Phase 2)
+### Web Dashboard
 
 ```bash
 cd dashboard
