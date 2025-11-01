@@ -41,3 +41,13 @@ PHASE*.md
 .idea/
 *.swp
 *.swo
+
+# Database files (contain user data, scan results)
+*.db
+auth.db
+
+# Backup files (contain production data, SSL certs)
+backups/
+
+# SSL certificates and keys
+nginx/ssl/*.pem
