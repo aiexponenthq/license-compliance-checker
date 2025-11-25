@@ -55,9 +55,14 @@ class LLMClient:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1, # Low temperature for deterministic output
-                max_tokens=20,
+                max_tokens=1024,
             )
-            content = response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            if content is None:
+                logger.warning(f"LLM returned no content. Full response: {response}")
+                return None
+                
+            content = content.strip()
             # Basic cleanup
             content = content.replace("SPDX Identifier:", "").strip()
             return content
