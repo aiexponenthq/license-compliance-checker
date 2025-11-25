@@ -16,6 +16,7 @@ from lcc.detection.ruby import RubyDetector
 from lcc.detection.dotnet import DotNetDetector
 from lcc.detection.huggingface import HuggingFaceDetector
 from lcc.detection.hf_datasets import HuggingFaceDatasetDetector
+from lcc.detection.license_file import LicenseFileDetector
 from lcc.detection.base import Detector
 from lcc.resolution.base import Resolver
 from lcc.resolution.clearlydefined import ClearlyDefinedResolver
@@ -44,6 +45,8 @@ def build_detectors() -> List[Detector]:
         # AI/ML detectors (Phase 3)
         HuggingFaceDetector(),
         HuggingFaceDatasetDetector(),
+        # Generic file detectors
+        LicenseFileDetector(),
     ]
 
 

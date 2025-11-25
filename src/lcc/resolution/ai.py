@@ -29,16 +29,20 @@ class AIResolver(Resolver):
             return
 
         # We need a path to analyze
-        path = component.path
-        if not path:
-            # Try to construct path from metadata if available
-            # Some detectors might put relative path in component.path and root in metadata
-            project_root = component.metadata.get("project_root")
-            if project_root and component.path:
-                try:
-                    path = Path(project_root) / component.path
-                except Exception:
-                    pass
+        path = None
+        if component.path:
+            # Check if it's already absolute
+            p = Path(component.path)
+            if p.is_absolute() and p.exists():
+                path = p
+            else:
+                # Try to construct path from metadata if available
+                project_root = component.metadata.get("project_root")
+                if project_root:
+                    try:
+                        path = Path(project_root) / component.path
+                    except Exception:
+                        pass
         
         if not path or not isinstance(path, Path) or not path.exists() or not path.is_file():
             return

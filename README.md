@@ -172,7 +172,7 @@ LCC now supports LLM-based license analysis for complex or ambiguous license tex
 
 ```bash
 export LCC_LLM_ENDPOINT=http://localhost:11434/v1  # Example: Local Ollama
-export LCC_LLM_MODEL=qwen2.5:72b
+export LCC_LLM_MODEL=Qwen/Qwen3-32B
 export LCC_LLM_API_KEY=dummy
 ```
 
