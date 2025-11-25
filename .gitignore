@@ -8,6 +8,11 @@ __pycache__/
 dashboard/node_modules/
 dashboard/.next/
 
+# Build and Cache
+.cache/
+.lcc-cache/
+build/
+
 # Test artifacts
 test-hf-model/
 test-*.sh

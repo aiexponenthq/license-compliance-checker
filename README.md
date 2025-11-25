@@ -163,10 +163,37 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 # open http://localhost:3000
 ```
 
-Environment variables:
-
 - `NEXT_PUBLIC_LCC_API_BASE_URL` – REST endpoint for live data (defaults to `http://localhost:8000`).
 - `LCC_OPA_URL`, `LCC_OPA_TOKEN`, `LCC_REDIS_URL` – forwarded automatically when running in CI for policy evaluation, decision logging, and queue metrics.
+
+### AI-Powered License Analysis
+
+LCC now supports LLM-based license analysis for complex or ambiguous license texts.
+
+```bash
+export LCC_LLM_ENDPOINT=http://localhost:11434/v1  # Example: Local Ollama
+export LCC_LLM_MODEL=qwen2.5:72b
+export LCC_LLM_API_KEY=dummy
+```
+
+This enables the `ai_analysis` resolution strategy, which can be triggered when standard detection fails or for deeper insights.
+
+### Database & Authentication
+
+The system now includes a persistent database (SQLite by default, PostgreSQL supported) and user authentication.
+
+- **Database**: Defaults to `~/.lcc/lcc.db`. Configure via `LCC_DATABASE_URL` for PostgreSQL.
+- **Migrations**: Run `alembic upgrade head` to initialize the schema.
+- **Authentication**: Built-in JWT-based auth. The first user registration sets up the admin account.
+
+### Background Workers
+
+For large-scale scans, use the Redis-backed worker queue:
+
+```bash
+export LCC_REDIS_URL=redis://localhost:6379/0
+lcc queue worker  # Starts a worker process
+```
 
 ## Kubernetes Deployment
 
