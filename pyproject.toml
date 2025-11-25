@@ -31,7 +31,13 @@ dependencies = [
   "spdx-tools>=0.8.0",
   "packageurl-python>=0.11.0",
   "huggingface-hub>=0.19.0",
-  "python-gnupg>=0.5.0"
+  "python-gnupg>=0.5.0",
+  "sqlalchemy[asyncio]>=2.0.0",
+  "alembic>=1.13.0",
+  "asyncpg>=0.29.0",
+  "arq>=0.25.0",
+  "gitpython>=3.1.0",
+  "openai>=1.0.0"
 ]
 
 [project.optional-dependencies]
@@ -40,7 +46,9 @@ test = [
   "pytest-cov>=4.1",
   "responses>=0.25",
   "freezegun>=1.4.0",
-  "fakeredis>=2.21.3"
+  "fakeredis>=2.21.3",
+  "pytest-asyncio>=0.23.0",
+  "aiosqlite>=0.17.0"
 ]
 
 [project.scripts]
@@ -52,6 +60,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "-q --disable-warnings"
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 branch = true

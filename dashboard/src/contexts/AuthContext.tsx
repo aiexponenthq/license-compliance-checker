@@ -10,6 +10,7 @@ interface User {
   full_name: string | null;
   role: string;
   disabled: boolean;
+  must_change_password?: boolean;
 }
 
 interface AuthContextType {
@@ -66,14 +67,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUserProfile();
   }, []);
 
-  // Redirect to login if not authenticated and on protected route
+  // Redirect logic
   useEffect(() => {
-    if (!loading && !user) {
-      const publicPaths = ['/login'];
+    if (!loading) {
       const currentPath = window.location.pathname;
 
-      if (!publicPaths.includes(currentPath)) {
-        router.push('/login');
+      if (!user) {
+        // Not authenticated
+        const publicPaths = ['/login'];
+        if (!publicPaths.includes(currentPath)) {
+          router.push('/login');
+        }
+      } else {
+        // Authenticated
+        if (user.must_change_password && currentPath !== '/change-password') {
+          router.push('/change-password');
+        } else if (!user.must_change_password && currentPath === '/change-password') {
+          // If password change not required, don't stay on change-password page unless explicitly navigating there?
+          // Actually, users might want to change password voluntarily. 
+          // But for now, let's just ensure they ARE redirected if they MUST change it.
+          // We won't force them OUT of change-password if they don't have to.
+        }
       }
     }
   }, [loading, user, router]);

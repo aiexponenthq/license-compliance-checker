@@ -1,9 +1,14 @@
-FROM python:3.11-alpine AS builder
+FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apk add --no-cache gcc musl-dev libffi-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libc6-dev \
+    libffi-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /install
 
@@ -14,14 +19,18 @@ RUN python -m venv /opt/lcc \
     && /opt/lcc/bin/pip install --upgrade pip \
     && /opt/lcc/bin/pip install .
 
-FROM python:3.11-alpine AS runtime
+FROM python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     LCC_CACHE_DIR=/var/cache/lcc \
     PASSLIB_MAX_PASSWORD_SIZE=4096
-RUN apk add --no-cache git \
-    && addgroup -S lcc && adduser -S lcc -G lcc \
+
+# Install git for cloning repositories
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r lcc && useradd -r -g lcc lcc \
     && mkdir -p ${LCC_CACHE_DIR} /workspace /var/lib/lcc \
     && chown -R lcc:lcc ${LCC_CACHE_DIR} /workspace /var/lib/lcc
 
@@ -31,9 +40,11 @@ USER lcc
 WORKDIR /workspace
 
 ENV PATH="/opt/lcc/bin:$PATH"
+ENV PYTHONPATH="/opt/lcc/lib/python3.11/site-packages"
 
 VOLUME ["/workspace", "/var/lib/lcc"]
 
+# Default entrypoint is the CLI
 ENTRYPOINT ["lcc"]
 CMD ["--help"]
 
