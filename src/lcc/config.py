@@ -52,8 +52,8 @@ class LCCConfig:
     unknown_license_treatment: str = os.getenv("LCC_UNKNOWN_LICENSE_TREATMENT", "violation")
     
     # LLM Configuration
-    llm_endpoint: Optional[str] = os.getenv("LCC_LLM_ENDPOINT", "http://10.119.62.29:4201/v1")
-    llm_model: str = os.getenv("LCC_LLM_MODEL", "Qwen/Qwen3-32B")  # Default to a reasonable model name
+    llm_endpoint: Optional[str] = os.getenv("LCC_LLM_ENDPOINT")
+    llm_model: str = os.getenv("LCC_LLM_MODEL", "qwen-2.5-72b-instruct")  # Default to a reasonable model name
     llm_api_key: str = os.getenv("LCC_LLM_API_KEY", "dummy")  # Local LLMs often don't need a real key
 
 
