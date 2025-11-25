@@ -1,7 +1,7 @@
 """
 Resolver that uses AI to detect licenses from file content.
 """
-import asyncio
+
 import logging
 from pathlib import Path
 from typing import Iterable
@@ -48,11 +48,8 @@ class AIResolver(Resolver):
             return
 
         try:
-            # Since this method is synchronous but the analyzer is async,
-            # and we expect this to run in a thread (via run_in_executor),
-            # we can use asyncio.run() to execute the async logic.
-            # NOTE: This assumes we are NOT in the main event loop thread.
-            license_id = asyncio.run(self.analyzer.analyze_file(path))
+            # Synchronous call to analyzer
+            license_id = self.analyzer.analyze_file(path)
             
             if license_id and license_id != "UNKNOWN":
                 yield LicenseEvidence(

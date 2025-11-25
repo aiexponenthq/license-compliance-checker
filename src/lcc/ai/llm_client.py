@@ -4,7 +4,7 @@ LLM Client for interacting with local or remote LLM endpoints.
 import logging
 from typing import Optional
 
-from openai import AsyncOpenAI, OpenAIError
+from openai import OpenAI, OpenAIError
 
 from lcc.config import LCCConfig
 
@@ -19,10 +19,10 @@ class LLMClient:
     def __init__(self, config: LCCConfig):
         self.enabled = bool(config.llm_endpoint)
         self.model = config.llm_model
-        self.client: Optional[AsyncOpenAI] = None
+        self.client: Optional[OpenAI] = None
         
         if self.enabled:
-            self.client = AsyncOpenAI(
+            self.client = OpenAI(
                 base_url=config.llm_endpoint,
                 api_key=config.llm_api_key
             )
@@ -30,7 +30,7 @@ class LLMClient:
         else:
             logger.warning("LLM Client disabled: No endpoint configured.")
 
-    async def classify_license(self, text_snippet: str) -> Optional[str]:
+    def classify_license(self, text_snippet: str) -> Optional[str]:
         """
         Ask the LLM to identify the license from a text snippet.
         """
@@ -48,7 +48,7 @@ class LLMClient:
         )
 
         try:
-            response = await self.client.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that identifies software licenses."},

@@ -17,7 +17,7 @@ class LicenseAnalyzer:
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    async def analyze_file(self, file_path: Path) -> Optional[str]:
+    def analyze_file(self, file_path: Path) -> Optional[str]:
         """
         Analyze a file to determine its license.
         
@@ -43,7 +43,7 @@ class LicenseAnalyzer:
                 return None
 
             logger.debug(f"Sending {file_path.name} to LLM for analysis")
-            return await self.llm.classify_license(snippet)
+            return self.llm.classify_license(snippet)
             
         except Exception as e:
             logger.warning(f"Failed to analyze file {file_path}: {e}")
