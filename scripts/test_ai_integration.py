@@ -6,7 +6,6 @@ Usage:
     export LCC_LLM_MODEL=qwen2.5:72b
     python scripts/test_ai_integration.py
 """
-import asyncio
 import os
 import sys
 from pathlib import Path
@@ -19,7 +18,7 @@ from lcc.ai.llm_client import LLMClient
 
 print("Starting test script...", flush=True)
 
-async def main():
+def main():
     endpoint = os.getenv("LCC_LLM_ENDPOINT")
     if not endpoint:
         print("Error: LCC_LLM_ENDPOINT environment variable is not set.")
@@ -55,7 +54,7 @@ async def main():
     
     print("\nSending sample MIT license text for classification...")
     try:
-        result = await client.classify_license(sample_license_text)
+        result = client.classify_license(sample_license_text)
         print(f"\nResult: {result}")
         
         if result and "MIT" in result:
@@ -67,4 +66,4 @@ async def main():
         print(f"\n❌ ERROR: Failed to communicate with LLM: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
