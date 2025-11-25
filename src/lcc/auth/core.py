@@ -52,6 +52,7 @@ class User(BaseModel):
     disabled: bool = False
     role: UserRole = UserRole.USER
     hashed_password: Optional[str] = None
+    must_change_password: bool = False  # Force password change on first login
 
 
 class Token(BaseModel):
@@ -60,6 +61,7 @@ class Token(BaseModel):
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
     expires_in: int = ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    must_change_password: bool = False
 
 
 class TokenData(BaseModel):

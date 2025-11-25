@@ -134,7 +134,8 @@ def create_auth_router(user_repo: UserRepository) -> APIRouter:
         return Token(
             access_token=access_token,
             refresh_token=refresh_token,
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            must_change_password=user.must_change_password
         )
 
     @router.post("/register", response_model=Dict[str, str], status_code=201)
@@ -209,9 +210,10 @@ def create_auth_router(user_repo: UserRepository) -> APIRouter:
             Success message
 
         Raises:
-            HTTPException: If current password is incorrect
+            HTTPException: If current password is incorrect or new password is invalid
         """
         from lcc.auth.core import verify_password
+        from lcc.auth.validators import validate_password_strength, is_common_password
 
         # Verify current password
         user = user_repo.get_user(current_user.username)
@@ -221,8 +223,24 @@ def create_auth_router(user_repo: UserRepository) -> APIRouter:
                 detail="Current password is incorrect"
             )
 
-        # Update password
+        # Validate new password strength
+        is_valid, error_message = validate_password_strength(request.new_password)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message
+            )
+        
+        # Check if password is common
+        if is_common_password(request.new_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is too common. Please choose a more unique password."
+            )
+
+        # Update password and clear must_change_password flag
         user_repo.update_password(current_user.username, request.new_password)
+        user_repo.clear_password_change_requirement(current_user.username)
 
         return {"message": "Password changed successfully"}
 

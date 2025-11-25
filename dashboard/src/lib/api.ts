@@ -68,6 +68,8 @@ export interface ScanSummary {
   generatedAt: string;
   durationSeconds: number;
   reportUrl?: string;
+  progress_percent?: number;
+  current_stage?: string;
 }
 
 export interface ScanResult {

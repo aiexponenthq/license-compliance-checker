@@ -36,6 +36,7 @@ class UserRepository:
                     hashed_password TEXT NOT NULL,
                     role TEXT NOT NULL DEFAULT 'user',
                     disabled INTEGER NOT NULL DEFAULT 0,
+                    must_change_password INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -61,8 +62,8 @@ class UserRepository:
             if cursor.fetchone()[0] == 0:
                 now = datetime.now(timezone.utc).isoformat()
                 conn.execute("""
-                    INSERT INTO users (username, email, full_name, hashed_password, role, disabled, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO users (username, email, full_name, hashed_password, role, disabled, must_change_password, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     "admin",
                     "admin@example.com",
@@ -70,6 +71,7 @@ class UserRepository:
                     get_password_hash("admin"),  # Default password, should be changed
                     UserRole.ADMIN.value,
                     0,
+                    1,  # Force password change for default admin
                     now,
                     now
                 ))
@@ -106,7 +108,8 @@ class UserRepository:
                 full_name=row["full_name"],
                 hashed_password=row["hashed_password"],
                 role=UserRole(row["role"]),
-                disabled=bool(row["disabled"])
+                disabled=bool(row["disabled"]),
+                must_change_password=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
             )
         finally:
             conn.close()
@@ -139,7 +142,8 @@ class UserRepository:
                 full_name=row["full_name"],
                 hashed_password=row["hashed_password"],
                 role=UserRole(row["role"]),
-                disabled=bool(row["disabled"])
+                disabled=bool(row["disabled"]),
+                must_change_password=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
             )
         finally:
             conn.close()
@@ -222,6 +226,25 @@ class UserRepository:
                 WHERE username = ?
             """, (hashed_password, now, username))
 
+            conn.commit()
+        finally:
+            conn.close()
+    
+    def clear_password_change_requirement(self, username: str) -> None:
+        """
+        Clear the must_change_password flag for a user.
+        
+        Args:
+            username: Username to update
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            conn.execute("""
+                UPDATE users
+                SET must_change_password = 0, updated_at = ?
+                WHERE username = ?
+            """, (now, username))
             conn.commit()
         finally:
             conn.close()
