@@ -1,6 +1,20 @@
 # License Compliance Checker (LCC)
 
-A comprehensive, enterprise-grade open-source license compliance tool designed to automate license detection, policy enforcement, and compliance reporting across complex software portfolios.
+[![License](https://img.shields.io/github/license/apundhir/license-compliance-checker)](https://github.com/apundhir/license-compliance-checker/blob/main/LICENSE)
+[![Python Version](https://img.shields.io/pypi/pyversions/license-compliance-checker)](https://pypi.org/project/license-compliance-checker/)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+**Automated License Compliance for the AI Era.**
+
+LCC is an enterprise-grade, open-source compliance platform designed to secure your software supply chain. It automates license detection, policy enforcement, and compliance reporting across complex polyglot repositories, with first-class support for AI/ML models and datasets.
+
+## Why LCC?
+
+In the age of AI and modular software, dependency chains are exploding. Manual compliance reviews effectively halt development velocity. LCC solves this by:
+*   **Reducing Risk**: Instantly identifying GPL/AGPL contamination in proprietary codebases.
+*   **Saving Time**: Automating "Bill of Materials" (SBOM) and attribution generation.
+*   **AI-Native**: Interpreting complex AI model licenses (e.g., Llama 2, OpenRAIL) that traditional tools miss.
 
 ## Key Features
 
