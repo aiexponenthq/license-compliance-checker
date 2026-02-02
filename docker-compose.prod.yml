@@ -14,7 +14,7 @@ services:
     image: lcc:${VERSION:-latest}
     container_name: lcc-api
     restart: unless-stopped
-    command: ["server", "--host", "0.0.0.0", "--port", "8000"]
+    command: [ "server", "--host", "0.0.0.0", "--port", "8000" ]
     working_dir: /workspace
     user: lcc
     environment:
@@ -27,6 +27,9 @@ services:
       LCC_CACHE_DIR: /var/cache/lcc
       LCC_DB_PATH: /var/lib/lcc/lcc.db
       LCC_POLICY_DIR: /var/lib/lcc/policies
+      LCC_TEMPLATE_DIR: /var/lib/lcc/templates
+      LCC_DATABASE_URL: postgresql+asyncpg://lcc:${POSTGRES_PASSWORD}@postgres:5432/lcc
+      LCC_REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
       LCC_LOG_LEVEL: ${LCC_LOG_LEVEL:-INFO}
       LCC_LOG_FORMAT: json
 
@@ -46,6 +49,9 @@ services:
 
       # Redis (optional cache)
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
 
       # Monitoring
       SENTRY_DSN: ${SENTRY_DSN:-}
@@ -64,6 +70,7 @@ services:
 
       # Read-only source (for production)
       - ./src:/workspace/src:ro
+      - ./scripts:/workspace/scripts:ro
 
     networks:
       - lcc-network
@@ -75,7 +82,7 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -96,6 +103,77 @@ services:
         max-size: "50m"
         max-file: "10"
         labels: "service=lcc-api,environment=production"
+
+  # Worker service
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_ENV: production
+    image: lcc:${VERSION:-latest}
+    container_name: lcc-worker
+    restart: unless-stopped
+    entrypoint: [ "/opt/lcc/bin/arq" ]
+    command: [ "lcc.worker.worker.WorkerSettings" ]
+    working_dir: /workspace
+    user: lcc
+    environment:
+      # Application
+      NODE_ENV: production
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+
+      # LCC Configuration
+      LCC_CACHE_DIR: /var/cache/lcc
+      LCC_DB_PATH: /var/lib/lcc/lcc.db
+      LCC_POLICY_DIR: /var/lib/lcc/policies
+      LCC_TEMPLATE_DIR: /var/lib/lcc/templates
+      LCC_DATABASE_URL: postgresql+asyncpg://lcc:${POSTGRES_PASSWORD}@postgres:5432/lcc
+      LCC_REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      LCC_LOG_LEVEL: ${LCC_LOG_LEVEL:-INFO}
+      LCC_LOG_FORMAT: json
+
+      # Redis
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+
+      # Monitoring
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+    volumes:
+      # Persistent data
+      - lcc-data:/var/lib/lcc:rw
+      - lcc-cache:/var/cache/lcc:rw
+
+      # Logs
+      - lcc-logs:/var/log/lcc:rw
+
+      # Read-only source (for production)
+      - ./src:/workspace/src:ro
+      - ./scripts:/workspace/scripts:ro
+
+    networks:
+      - lcc-network
+
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
 
   # Dashboard frontend
   dashboard:
@@ -119,7 +197,7 @@ services:
     depends_on:
       - api
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -146,7 +224,7 @@ services:
     networks:
       - lcc-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -178,7 +256,7 @@ services:
     networks:
       - lcc-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lcc}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lcc}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -213,7 +291,7 @@ services:
       - api
       - dashboard
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

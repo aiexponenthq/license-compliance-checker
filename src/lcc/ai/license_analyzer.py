@@ -34,15 +34,30 @@ class LicenseAnalyzer:
             return None
 
         try:
-            # Read file content, focusing on the beginning where license headers usually are
-            # Limit to 3000 characters to stay within reasonable token limits for the prompt context
-            content = file_path.read_text(encoding="utf-8", errors="ignore")
-            snippet = content[:3000]
+            # Smart Chunking: Read head and tail to capture licenses at top or bottom
+            MAX_SIZE = 5000
+            HEAD_SIZE = 2000
+            TAIL_SIZE = 1000
+            
+            file_size = file_path.stat().st_size
+            
+            if file_size <= MAX_SIZE:
+                content = file_path.read_text(encoding="utf-8", errors="ignore")
+                snippet = content
+            else:
+                with file_path.open("r", encoding="utf-8", errors="ignore") as f:
+                    head = f.read(HEAD_SIZE)
+                    
+                    # Seek to tail
+                    f.seek(max(file_size - TAIL_SIZE, HEAD_SIZE))
+                    tail = f.read()
+                    
+                    snippet = f"{head}\n\n[...SNIP...]\n\n{tail}"
             
             if not snippet.strip():
                 return None
 
-            logger.debug(f"Sending {file_path.name} to LLM for analysis")
+            logger.debug(f"Sending {file_path.name} to LLM for analysis (size: {len(snippet)} chars)")
             return self.llm.classify_license(snippet)
             
         except Exception as e:

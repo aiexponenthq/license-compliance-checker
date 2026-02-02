@@ -41,7 +41,9 @@ class WorkerSettings:
         host=os.getenv("REDIS_HOST", "localhost"),
         port=int(os.getenv("REDIS_PORT", 6379)),
         database=int(os.getenv("REDIS_DB", 0)),
+        password=os.getenv("REDIS_PASSWORD"),
     )
+    print(f"DEBUG: Redis config: host={redis_settings.host}, port={redis_settings.port}, password={redis_settings.password}, env={os.getenv('REDIS_PASSWORD')}")
     
     # If we wanted to use the full URL from config, we'd need to decompose it.
     # For now, relying on separate env vars or defaults is safer for this implementation step.

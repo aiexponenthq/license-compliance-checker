@@ -2,6 +2,7 @@
 Background tasks for the LCC worker with progress tracking.
 """
 import asyncio
+import logging
 import shutil
 import tempfile
 import traceback
@@ -22,7 +23,9 @@ from lcc.utils.git import clone_github_repo
 from lcc.worker.progress import ScanStage
 from lcc.worker.progress_tracker import ProgressTracker
 
-async def run_scan_task(ctx: Dict[str, Any], scan_id: str, repo_url: Optional[str] = None, path: Optional[str] = None) -> None:
+logger = logging.getLogger(__name__)
+
+async def run_scan_task(ctx: Dict[str, Any], scan_id: str, repo_url: Optional[str] = None, path: Optional[str] = None, check_vulnerabilities: bool = False) -> None:
     """
     Execute a license scan in the background with real-time progress tracking.
     """
@@ -49,7 +52,7 @@ async def run_scan_task(ctx: Dict[str, Any], scan_id: str, repo_url: Optional[st
             scan = await repo.get_scan(scan_id)
             
             if not scan:
-                print(f"Scan {scan_id} not found in database.")
+                logger.error(f"Scan {scan_id} not found in database.")
                 await progress.update(
                     ScanStage.FAILED,
                     "Scan not found in database",
@@ -81,6 +84,15 @@ async def run_scan_task(ctx: Dict[str, Any], scan_id: str, repo_url: Optional[st
                         Path(temp_dir)
                     )
                     project_path = Path(temp_dir)
+
+    # ... [inside run_scan_task] ...
+                    
+                    logger.debug(f"Scanned repo_url: {repo_url}")
+                    logger.debug(f"Project path: {project_path}")
+                    if project_path.exists():
+                        logger.debug(f"Project path {project_path} exists. Starting nested scan.")
+                    else:
+                        logger.debug(f"Project path {project_path} does not exist!")
                 elif path:
                     project_path = Path(path)
                     if not project_path.exists():
@@ -95,8 +107,13 @@ async def run_scan_task(ctx: Dict[str, Any], scan_id: str, repo_url: Optional[st
                 )
 
                 # Run synchronous scan in a thread pool to avoid blocking the async worker
+                # Run synchronous scan in a thread pool to avoid blocking the async worker
                 loop = asyncio.get_running_loop()
-                report = await loop.run_in_executor(None, scanner.scan, project_path)
+                
+                # Use functools.partial to pass keyword arguments
+                from functools import partial
+                scan_func = partial(scanner.scan, project_root=project_path, check_vulnerabilities=check_vulnerabilities)
+                report = await loop.run_in_executor(None, scan_func)
                 
                 # Update progress with component count
                 components_found = len(report.findings)
@@ -176,6 +193,13 @@ async def run_scan_task(ctx: Dict[str, Any], scan_id: str, repo_url: Optional[st
                 scan.status = "complete"
                 scan.components_count = report.summary.component_count
                 scan.violations_count = report.summary.violations
+                
+                # Check for vulnerabilities in summary context
+                vuln_count = report.summary.context.get("vulnerabilities", 0)
+                # Store in context if model doesn't have a direct field (assuming it does or we use context)
+                scan.context = scan.context or {}
+                scan.context["vulnerabilities"] = vuln_count
+                
                 scan.report = report_dict
                 scan.duration_seconds = report.summary.duration_seconds
                 

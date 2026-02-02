@@ -28,7 +28,16 @@ class JavaScriptDetector(Detector):
 
     def supports(self, project_root: Path) -> bool:  # pragma: no cover - simple predicate
         manifests = ["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"]
-        return any((project_root / manifest).exists() for manifest in manifests)
+        if any((project_root / manifest).exists() for manifest in manifests):
+            return True
+        # Recursive check
+        for manifest in manifests:
+             try:
+                 if next(project_root.rglob(f"**/{manifest}"), None):
+                     return True
+             except (OSError, PermissionError):
+                 continue
+        return False
 
     def discover(self, project_root: Path) -> Sequence[Component]:
         registry: Dict[Tuple[str, str], Component] = {}
@@ -60,32 +69,39 @@ class JavaScriptDetector(Detector):
             source_entry["project_root"] = str(project_root)
             component.metadata["sources"].append(source_entry)
 
-        package_json_path = project_root / "package.json"
-        workspace_paths: List[Path] = []
-        if package_json_path.exists():
-            data = json.loads(package_json_path.read_text(encoding="utf-8"))
-            workspace_paths = self._workspace_paths(project_root, data)
-            for spec in self._parse_package_json(data, "package.json"):
+        # Helper to find files recursively, excluding common ignored dirs
+        skip_dirs = {".git", "node_modules", "dist", "build", "coverage"}
+        def find_files(filename: str) -> Iterable[Path]:
+            # Simple rglob includes ignored dirs, we should filter
+            # But detectors usually do robust checking. For now rglob is fine, we filter in loop
+            return project_root.rglob(filename)
+
+        # package.json
+        for path in find_files("package.json"):
+            if any(part in skip_dirs for part in path.parts):
+                 continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            relative_source = str(path.relative_to(project_root))
+            for spec in self._parse_package_json(data, relative_source):
                 register(*spec)
 
-        for workspace in workspace_paths:
-            workspace_package = workspace / "package.json"
-            if workspace_package.exists():
-                data = json.loads(workspace_package.read_text(encoding="utf-8"))
-                for spec in self._parse_package_json(data, str(workspace_package.relative_to(project_root))):
-                    register(*spec)
+        for path in find_files("package-lock.json"):
+            if any(part in skip_dirs for part in path.parts): continue
+            for spec in self._parse_package_lock_file(path, project_root):
+                register(*spec)
 
-        for spec in self._parse_package_lock(project_root):
-            register(*spec)
+        for path in find_files("yarn.lock"):
+            if any(part in skip_dirs for part in path.parts): continue
+            for spec in self._parse_yarn_lock_file(path, project_root):
+                register(*spec)
 
-        for spec in self._parse_yarn_lock(project_root):
-            register(*spec)
-
-        for spec in self._parse_pnpm_lock(project_root):
-            register(*spec)
-
-        for spec in self._parse_node_modules(project_root):
-            register(*spec)
+        for path in find_files("pnpm-lock.yaml"):
+            if any(part in skip_dirs for part in path.parts): continue
+            for spec in self._parse_pnpm_lock_file(path, project_root):
+                 register(*spec)
 
         for component in registry.values():
             if isinstance(component.metadata.get("licenses"), set):
@@ -134,8 +150,7 @@ class JavaScriptDetector(Detector):
             results.append((base_name, base_version, base_metadata))
         return results
 
-    def _parse_package_lock(self, project_root: Path) -> Iterable[DependencySpec]:
-        path = project_root / "package-lock.json"
+    def _parse_package_lock_file(self, path: Path, project_root: Path) -> Iterable[DependencySpec]:
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -182,8 +197,7 @@ class JavaScriptDetector(Detector):
                 results.extend(self._collect_lock_dependencies(data["dependencies"], prefix))
         return results
 
-    def _parse_yarn_lock(self, project_root: Path) -> Iterable[DependencySpec]:
-        path = project_root / "yarn.lock"
+    def _parse_yarn_lock_file(self, path: Path, project_root: Path) -> Iterable[DependencySpec]:
         if not path.exists():
             return []
         content = path.read_text(encoding="utf-8")
@@ -226,8 +240,7 @@ class JavaScriptDetector(Detector):
                 results.append((clean_name, version, entry_metadata))
         return results
 
-    def _parse_pnpm_lock(self, project_root: Path) -> Iterable[DependencySpec]:
-        path = project_root / "pnpm-lock.yaml"
+    def _parse_pnpm_lock_file(self, path: Path, project_root: Path) -> Iterable[DependencySpec]:
         if not path.exists():
             return []
         return self._parse_pnpm_lock_text(path.read_text(encoding="utf-8"))

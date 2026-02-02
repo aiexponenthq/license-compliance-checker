@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getScans, createScan, getPolicies, getScanProgress } from "@/lib/api";
+import { getScans, createScan, getPolicies, getScanProgress, api } from "@/lib/api";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import {
   Card,
@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
   ScanSearch,
@@ -57,6 +58,7 @@ export default function ScansPage() {
   const [repoUrl, setRepoUrl] = useState("");
   const [projectName, setProjectName] = useState("");
   const [selectedPolicy, setSelectedPolicy] = useState("");
+  const [checkVulnerabilities, setCheckVulnerabilities] = useState(false);
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,9 +89,11 @@ export default function ScansPage() {
     enabled: !!activeScanId && !showSuccess,
     refetchInterval: (data) => {
       // Stop polling if scan is complete or failed
-      if (data?.status === "complete" || data?.status === "failed") {
+      const scanStatus = data?.status?.toLowerCase();
+      if (scanStatus === "complete" || scanStatus === "failed") {
         return false;
       }
+      return 1500; // Poll every 1.5 seconds
       return 1500; // Poll every 1.5 seconds
     },
     retry: false,
@@ -109,6 +113,7 @@ export default function ScansPage() {
         setRepoUrl("");
         setProjectName("");
         setSelectedPolicy("");
+        setCheckVulnerabilities(false);
 
         // Navigate to scan details if successful
         if (progress.status === "complete") {
@@ -121,8 +126,14 @@ export default function ScansPage() {
   }, [progress?.status, activeScanId, queryClient, router]);
 
   const createScanMutation = useMutation({
-    mutationFn: (data: { repoUrl: string; projectName: string; policy?: string }) => {
-      return createScan(data.repoUrl, data.policy, data.projectName);
+    mutationFn: (data: { repoUrl: string; projectName: string; policy?: string; checkVulnerabilities?: boolean }) => {
+      // Direct API call if lib/api wrapper doesn't support extra args yet
+      return api.post("/scans", {
+        repo_url: data.repoUrl,
+        project_name: data.projectName,
+        policy: data.policy,
+        check_vulnerabilities: data.checkVulnerabilities
+      }).then(res => res.data);
     },
     onSuccess: (data: any) => {
       // Clear submission state
@@ -151,6 +162,7 @@ export default function ScansPage() {
       setRepoUrl("");
       setProjectName("");
       setSelectedPolicy("");
+      setCheckVulnerabilities(false);
       setActiveScanId(null);
 
       // Refresh scans list
@@ -212,6 +224,7 @@ export default function ScansPage() {
       repoUrl: repoUrl.trim(),
       projectName: finalProjectName,
       policy: selectedPolicy === "none" ? undefined : selectedPolicy,
+      checkVulnerabilities: checkVulnerabilities,
     });
   };
 
@@ -323,6 +336,17 @@ export default function ScansPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="checkVulnerabilities"
+                    checked={checkVulnerabilities}
+                    onCheckedChange={(checked) => setCheckVulnerabilities(checked as boolean)}
+                    disabled={createScanMutation.isPending}
+                  />
+                  <Label htmlFor="checkVulnerabilities" className="font-normal cursor-pointer">
+                    Check for Security Vulnerabilities (OSV)
+                  </Label>
                 </div>
               </div>
 

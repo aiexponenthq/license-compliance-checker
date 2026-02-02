@@ -47,6 +47,7 @@ class ScanRequest(BaseModel):
     context: Optional[str] = Field(None, description="Policy evaluation context")
     recursive: bool = Field(False, description="Reserved for future use")
     exclude: List[str] = Field(default_factory=list, description="Glob patterns to skip")
+    check_vulnerabilities: bool = Field(False, description="Check for known vulnerabilities (OSV)")
 
 
 class ScanSummaryDTO(BaseModel):
@@ -278,7 +279,8 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
         await redis.enqueue_job("run_scan_task", 
             scan_id=created_scan.id, 
             repo_url=payload.repo_url, 
-            path=payload.path
+            path=payload.path,
+            check_vulnerabilities=payload.check_vulnerabilities
         )
 
         return ScanSummaryDTO(
@@ -315,6 +317,48 @@ def create_app(config_path: Optional[Path] = None) -> FastAPI:
             reportUrl=f"/scans/{scan.id}",
         )
         return ScanDetailDTO(summary=summary, report=scan.report)
+
+    @app.get("/scans/{scan_id}/attribution")
+    @limiter.limit("50/minute")
+    async def get_scan_attribution(
+        request: Request,
+        scan_id: str,
+        repo: ScanRepository = Depends(get_repository),
+        current_user: User = Depends(get_current_active_user)
+    ):
+        """Download Attribution/NOTICE file for a scan."""
+        from fastapi import Response
+        from lcc.models import ScanReport, ComponentFinding, ScanSummary
+        from lcc.reporting.attribution import AttributionReporter
+
+        scan = await repo.get_scan(scan_id)
+        if not scan or not scan.report:
+            raise HTTPException(status_code=404, detail="Scan or report not found")
+
+        # Reconstruct ScanReport from stored JSON
+        # Note: Ideally scan.report is a dict matching schema.
+        try:
+            # Basic reconstruction without full validation for speed
+            report_data = scan.report
+            findings = []
+            for item in report_data.get("findings", []):
+                # ... (Simplified reconstruction or reuse deserialize utility if available)
+                # For MVP, we pass the dict if deserializer not easily available, 
+                # but better to use lcc.cli.main._deserialize_report logic if refactored.
+                # Here we will attempt to rely on the stored report structure matching 
+                # what AttributionReporter expects, or quickly deserialize essential fields.
+                pass 
+            
+            # Use CLI helper to deserialize properly
+            from lcc.cli.main import _deserialize_report
+            report = _deserialize_report(report_data)
+
+            reporter = AttributionReporter()
+            text = reporter.render(report)
+            
+            return Response(content=text, media_type="text/plain")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate attribution: {str(e)}")
     
     @app.get("/scans/{scan_id}/progress", response_model=Optional[ScanProgress])
     @limiter.limit("100/minute")

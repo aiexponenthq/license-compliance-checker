@@ -29,6 +29,7 @@ class Scanner:
         self,
         project_root: Path,
         progress_callback: Optional[Callable[[str, str, int, int], None]] = None,
+        check_vulnerabilities: bool = False,
     ) -> ScanReport:
         start = time.time()
         findings: List[ComponentFinding] = []
@@ -48,6 +49,15 @@ class Scanner:
                 progress_callback("resolver", finding.component.name, index, len(findings))
 
         resolved = sum(1 for finding in findings if finding.resolved_license)
+        
+        # Security Scan
+        vuln_count = 0
+        if check_vulnerabilities:
+            from lcc.security.scanner import SecurityScanner
+            security_scanner = SecurityScanner()
+            if progress_callback:
+                progress_callback("security", "OSV", 1, 1)
+            vuln_count = security_scanner.scan_findings(findings)
 
         summary = ScanSummary(
             component_count=len(findings),
@@ -57,6 +67,7 @@ class Scanner:
                 "detectors": [detector.name for detector in self.detectors],
                 "resolvers": [resolver.name for resolver in self.resolvers],
                 "resolved": resolved,
+                "vulnerabilities": vuln_count,
             },
         )
 
