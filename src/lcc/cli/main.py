@@ -28,6 +28,7 @@ from lcc.reporting.json_reporter import JSONReporter
 from lcc.reporting.markdown_reporter import MarkdownReporter
 from lcc.reporting.html_reporter import HTMLReporter
 from lcc.reporting.csv_reporter import CSVReporter
+from lcc.reporting.attribution import AttributionReporter
 from lcc.api.server import create_app
 from lcc.policy import PolicyAlternative, PolicyDecision, PolicyError, PolicyManager, evaluate_policy
 from lcc.policy.opa_client import OPAClient, OPAClientError
@@ -87,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument("--cache-ttl", type=int, default=3600, help="Cache TTL in seconds")
     scan_parser.add_argument("--git", action="append", default=[], help="Clone git repository url[@ref] and scan")
     scan_parser.add_argument("--git-depth", type=int, default=1, help="Depth when cloning git repositories")
+    scan_parser.add_argument("--check-vulnerabilities", action="store_true", help="Check for known vulnerabilities (OSV)")
     scan_parser.set_defaults(func=handle_scan)
 
     interactive_parser = subparsers.add_parser("interactive", help="Interactive scan exploration")
@@ -179,7 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     generate_parser = report_sub.add_parser("generate", help="Generate a compliance report")
     generate_parser.add_argument("path", help="Project directory to scan or existing JSON report")
-    generate_parser.add_argument("--format", choices=["json", "markdown", "html", "csv"], default="markdown")
+    generate_parser.add_argument("--format", choices=["json", "markdown", "html", "csv", "attribution"], default="markdown")
     generate_parser.add_argument("--output", help="Output file path")
     generate_parser.add_argument("--include-evidence", action="store_true", help="Include evidence details")
     generate_parser.add_argument("--summary-only", action="store_true", help="Only include summary information")
@@ -313,7 +315,11 @@ def handle_scan(args: argparse.Namespace) -> int:
         for target in targets:
             progress.reset(detection_task)
             progress.reset(resolution_task)
-            report = scanner.scan(target, progress_callback=progress_callback)
+            report = scanner.scan(
+                target, 
+                progress_callback=progress_callback,
+                check_vulnerabilities=args.check_vulnerabilities
+            )
             for finding in report.findings:
                 finding.component.metadata.setdefault("project_root", str(target))
                 findings.append(finding)
@@ -1078,6 +1084,8 @@ def handle_report_generate(args: argparse.Namespace) -> int:
             group_by=args.group_by,
             comparison=report.summary.context.get("comparison"),
         ).render(report)
+    elif args.format == "attribution":
+        payload = AttributionReporter().render(report)
     else:  # csv
         payload = CSVReporter(include_evidence=args.include_evidence).render(report)
 

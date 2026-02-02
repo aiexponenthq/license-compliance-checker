@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "license-compliance-checker"
-version = "0.1.0"
-description = "License Compliance Checker (LCC) Phase 1 foundation implementation."
+version = "1.0.0"
+description = "License Compliance Checker (LCC) - Enterprise-grade open source compliance tool."
 authors = [
-  { name = "LCC Contributors" }
+  { name = "Ajay Pundhir", email = "ajaypratap.iiitb@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,7 +37,9 @@ dependencies = [
   "asyncpg>=0.29.0",
   "arq>=0.25.0",
   "gitpython>=3.1.0",
-  "openai>=1.0.0"
+  "openai>=1.0.0",
+  "python-dotenv>=1.0.0",
+  "aiosqlite>=0.19.0"
 ]
 
 [project.optional-dependencies]

@@ -40,7 +40,20 @@ class PythonDetector(Detector):
 
     def supports(self, project_root: Path) -> bool:  # pragma: no cover - simple predicate
         manifests = ["requirements.txt", "setup.py", "pyproject.toml", "Pipfile", "poetry.lock", "environment.yml"]
-        return any((project_root / manifest).exists() for manifest in manifests)
+        if any((project_root / manifest).exists() for manifest in manifests):
+            return True
+            
+        # Recursive check for nested projects (e.g. monorepos)
+        # Check for key manifests in subdirectories
+        patterns = ["**/requirements.txt", "**/pyproject.toml", "**/setup.py", "**/Pipfile", "**/poetry.lock"]
+        for pattern in patterns:
+            try:
+                # Use next() to return True as soon as one is found, preventing full traversal
+                if next(project_root.rglob(pattern), None):
+                    return True
+            except (OSError, PermissionError):
+                continue
+        return False
 
     def discover(self, project_root: Path) -> Sequence[Component]:
         specs: Dict[Tuple[str, str], Component] = {}
@@ -77,29 +90,44 @@ class PythonDetector(Detector):
                     licenses = {metadata["license"]}
                     component.metadata["licenses"] = licenses
 
+        # Helper to find files recursively
+        def find_files(pattern: str) -> Iterable[Path]:
+             return project_root.rglob(pattern)
+
+        # Requirements.txt
         for requirement in self._parse_requirements_txt(project_root):
             name, version, metadata = requirement
-            register(name, version, "requirements.txt", metadata)
+            register(name, version, metadata.get("source", "requirements.txt"), metadata)
 
-        for requirement in self._parse_setup_py(project_root):
-            name, version, metadata = requirement
-            register(name, version, "setup.py", metadata)
+        # setup.py
+        for path in find_files("setup.py"):
+            for requirement in self._parse_setup_py_file(path, project_root):
+                name, version, metadata = requirement
+                register(name, version, str(path.relative_to(project_root)), metadata)
 
-        for requirement in self._parse_pyproject(project_root):
-            name, version, metadata = requirement
-            register(name, version, metadata.pop("source", "pyproject.toml"), metadata)
+        # pyproject.toml
+        for path in find_files("pyproject.toml"):
+            for requirement in self._parse_pyproject_file(path, project_root):
+                 name, version, metadata = requirement
+                 register(name, version, metadata.pop("source", str(path.relative_to(project_root))), metadata)
 
-        for requirement in self._parse_pipfile(project_root):
-            name, version, metadata = requirement
-            register(name, version, "Pipfile", metadata)
+        # Pipfile
+        for path in find_files("Pipfile"):
+             for requirement in self._parse_pipfile_file(path, project_root):
+                name, version, metadata = requirement
+                register(name, version, str(path.relative_to(project_root)), metadata)
 
-        for requirement in self._parse_poetry_lock(project_root):
-            name, version, metadata = requirement
-            register(name, version, "poetry.lock", metadata)
+        # poetry.lock
+        for path in find_files("poetry.lock"):
+            for requirement in self._parse_poetry_lock_file(path, project_root):
+                name, version, metadata = requirement
+                register(name, version, str(path.relative_to(project_root)), metadata)
 
-        for requirement in self._parse_environment_yml(project_root):
-            name, version, metadata = requirement
-            register(name, version, "environment.yml", metadata)
+        # environment.yml
+        for path in find_files("environment.yml"):
+            for requirement in self._parse_environment_yml_file(path, project_root):
+                name, version, metadata = requirement
+                register(name, version, str(path.relative_to(project_root)), metadata)
 
         for requirement in self._parse_local_metadata(project_root):
             name, version, metadata = requirement
@@ -116,40 +144,34 @@ class PythonDetector(Detector):
 
     def _parse_requirements_txt(self, project_root: Path) -> Iterable[RequirementSpec]:
         """
-        Parse requirements files from various locations and naming patterns.
-
-        Searches for:
-        - requirements.txt (root)
-        - requirements/*.txt (subdirectory pattern, common for prod/dev/test splits)
-        - requirements/*.in (pip-tools input files)
-        - requirements-*.txt (prefixed variants like requirements-dev.txt)
+        Parse requirements files from various locations and naming patterns recursively.
         """
         results: List[RequirementSpec] = []
-
-        # Collect all requirements files with common naming patterns
-        requirements_files: List[Path] = []
-
-        # Root requirements.txt
-        root_req = project_root / "requirements.txt"
-        if root_req.exists():
-            requirements_files.append(root_req)
-
-        # Subdirectory patterns: requirements/*.txt and requirements/*.in
-        requirements_files.extend(project_root.glob("requirements/*.txt"))
-        requirements_files.extend(project_root.glob("requirements/*.in"))
-
-        # Prefixed variants: requirements-*.txt (e.g., requirements-dev.txt)
-        requirements_files.extend(project_root.glob("requirements-*.txt"))
+        
+        # Collect all requirements files recursively
+        requirements_files = set(project_root.rglob("requirements.txt"))
+        requirements_files.update(project_root.rglob("requirements/*.txt"))
+        requirements_files.update(project_root.rglob("requirements-*.txt"))
+        
+        # Common skip patterns
+        skip_dirs = {".venv", "venv", "site-packages", "node_modules", "__pycache__", ".git"}
 
         # Parse each file found
         for path in requirements_files:
+            # Skip if in ignored directory
+            if any(part in skip_dirs for part in path.parts):
+                continue
+                
             try:
                 content = path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
                 continue
 
             # Determine source label for metadata
-            relative_path = path.relative_to(project_root)
+            try:
+                relative_path = path.relative_to(project_root)
+            except ValueError:
+                relative_path = path
             source_label = str(relative_path)
 
             for line in content.splitlines():
@@ -181,8 +203,7 @@ class PythonDetector(Detector):
 
         return results
 
-    def _parse_setup_py(self, project_root: Path) -> Iterable[RequirementSpec]:
-        path = project_root / "setup.py"
+    def _parse_setup_py_file(self, path: Path, project_root: Path) -> Iterable[RequirementSpec]:
         if not path.exists():
             return []
         try:
@@ -202,8 +223,9 @@ class PythonDetector(Detector):
                             requirements.extend(values)
         return [self._requirement_from_string(req, {"section": "setup.py"}) for req in requirements]
 
-    def _parse_pyproject(self, project_root: Path) -> Iterable[RequirementSpec]:
-        path = project_root / "pyproject.toml"
+    def _parse_pyproject_file(self, path: Path, project_root: Path) -> Iterable[RequirementSpec]:
+        if not path.exists():
+            return []
         if not path.exists():
             return []
         data = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -260,8 +282,9 @@ class PythonDetector(Detector):
                 results.append(self._requirement_from_string(req_str, metadata))
         return results
 
-    def _parse_pipfile(self, project_root: Path) -> Iterable[RequirementSpec]:
-        path = project_root / "Pipfile"
+    def _parse_pipfile_file(self, path: Path, project_root: Path) -> Iterable[RequirementSpec]:
+        if not path.exists():
+            return []
         if not path.exists():
             return []
         data = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -281,8 +304,9 @@ class PythonDetector(Detector):
                         results.append((name, None, metadata))
         return results
 
-    def _parse_poetry_lock(self, project_root: Path) -> Iterable[RequirementSpec]:
-        path = project_root / "poetry.lock"
+    def _parse_poetry_lock_file(self, path: Path, project_root: Path) -> Iterable[RequirementSpec]:
+        if not path.exists():
+            return []
         if not path.exists():
             return []
         data = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -303,8 +327,9 @@ class PythonDetector(Detector):
             results.append((name, version, metadata))
         return results
 
-    def _parse_environment_yml(self, project_root: Path) -> Iterable[RequirementSpec]:
-        path = project_root / "environment.yml"
+    def _parse_environment_yml_file(self, path: Path, project_root: Path) -> Iterable[RequirementSpec]:
+        if not path.exists():
+            return []
         if not path.exists():
             return []
         content = path.read_text(encoding="utf-8")

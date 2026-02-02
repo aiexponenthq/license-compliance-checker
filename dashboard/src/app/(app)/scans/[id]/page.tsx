@@ -30,6 +30,8 @@ import {
   Package,
   FileText,
   Clock,
+  ShieldAlert,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -65,6 +67,10 @@ interface ScanDetail {
         license: string;
         count: number;
       }>;
+      context?: {
+        vulnerabilities?: number;
+        [key: string]: any;
+      };
     };
   };
 }
@@ -243,6 +249,30 @@ export default function ScanDetailPage() {
               View {summary.warnings} Warning{summary.warnings !== 1 ? "s" : ""}
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                const response = await api.get(`/scans/${scanId}/attribution`, {
+                  responseType: "blob",
+                });
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", `NOTICE-${scan.summary.project || scanId}.txt`);
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode?.removeChild(link);
+                window.URL.revokeObjectURL(url);
+              } catch (error) {
+                console.error("Download failed:", error);
+                alert("Failed to download NOTICE file. Please try again.");
+              }
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download NOTICE
+          </Button>
         </div>
 
         {/* Summary Cards */}
@@ -296,6 +326,31 @@ export default function ScanDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Security Vulnerabilities */}
+        {scan.summary.violations >= 0 && ( /* Always show if verified, logic can be refined */
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="space-y-1">
+                <CardTitle>Security Vulnerabilities</CardTitle>
+                <CardDescription>
+                  Known vulnerabilities detected via OSV
+                </CardDescription>
+              </div>
+              <ShieldAlert className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {report?.summary?.context?.vulnerabilities !== undefined ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-destructive">{report.summary.context.vulnerabilities}</span>
+                  <span className="text-sm text-muted-foreground">issues found</span>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Vulnerability scan was not enabled for this run.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Project Information */}
         <Card>

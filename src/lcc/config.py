@@ -14,6 +14,13 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
     yaml = None
 from platformdirs import user_cache_dir
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = lambda: None  # Fallback if not installed
+
+# Load environment variables from .env file
+load_dotenv()
 
 DEFAULT_CONFIG_PATH = Path.home() / ".lcc" / "config.yml"
 
@@ -53,8 +60,10 @@ class LCCConfig:
     
     # LLM Configuration
     llm_endpoint: Optional[str] = os.getenv("LCC_LLM_ENDPOINT")
-    llm_model: str = os.getenv("LCC_LLM_MODEL", "qwen-2.5-72b-instruct")  # Default to a reasonable model name
-    llm_api_key: str = os.getenv("LCC_LLM_API_KEY", "dummy")  # Local LLMs often don't need a real key
+    llm_model: str = os.getenv("LCC_LLM_MODEL", "accounts/fireworks/models/llama-v3p3-70b-instruct")
+    llm_api_key: str = os.getenv("LCC_LLM_API_KEY", "dummy")
+    llm_provider: str = os.getenv("LCC_LLM_PROVIDER", "local")  # "local" or "fireworks"
+    fireworks_api_key: Optional[str] = os.getenv("LCC_FIREWORKS_API_KEY")
 
 
 def load_config(path: Optional[Path] = None) -> LCCConfig:
