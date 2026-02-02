@@ -9,7 +9,19 @@ A comprehensive, enterprise-grade open-source license compliance tool designed t
 - **Modern Web Dashboard**: visually explore scan results, view attribution reports, and manage policies via a Next.js-based UI.
 - **Asynchronous Processing**: high-performance, background job processing with Redis-backed queues for scanning large repositories without blocking.
 - **Attribution Generation**: automatically generate compliant NOTICE files and attribution reports for distribution.
-- **AI-Powered Analysis**: Optional LLM integration for analyzing ambiguous license texts and headers.
+- **AI-Powered Analysis**:### AI-Powered License Analysis
+
+LCC supports LLM-based license analysis to resolve ambiguous license texts or headers, integrated with **Fireworks AI**.
+
+To enable AI analysis, configure the following environment variables:
+
+```bash
+export LCC_LLM_PROVIDER=fireworks
+export LCC_FIREWORKS_API_KEY=your_fireworks_api_key
+export LCC_LLM_MODEL=accounts/fireworks/models/llama-v3p1-70b-instruct
+```
+
+This enables the `ai_analysis` resolution strategy, which the scanner uses when standard regex matching returns low confidence or fails.
 
 ## System Architecture
 
