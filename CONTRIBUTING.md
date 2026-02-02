@@ -616,9 +616,9 @@ To add a new license data source:
 ### Where to Document
 
 - **README.md**: Overview, quick start, links
-- **docs/USER_GUIDE.md**: Complete CLI usage
-- **docs/API_GUIDE.md**: REST API reference
-- **docs/POLICY_GUIDE.md**: Policy creation and management
+- **docs/guides/user.md**: Complete CLI usage
+- **docs/reference/api.md**: REST API reference
+- **docs/guides/policies.md**: Policy creation and management
 - **Docstrings**: All public functions and classes
 - **Code comments**: Complex logic and algorithms
 

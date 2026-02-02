@@ -105,6 +105,15 @@ LCC recursively scans your project directory to find manifest files in any subdi
 - **Java/Kotlin**: `pom.xml` (Maven), `build.gradle`, `build.gradle.kts`
 - **Rust**: `Cargo.toml`, `Cargo.lock`
 
+## Documentation
+
+- [User Guide](docs/guides/user.md)
+- [API Reference](docs/reference/api.md)
+- [Deployment Guide](docs/deployment/index.md)
+- [Policy Guide](docs/guides/policies.md)
+
+See the [docs/](docs/README.md) directory for more detailed guides and references.
+
 ## Development
 
 Run the services locally for development:
