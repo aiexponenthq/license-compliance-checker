@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     import yaml
@@ -42,6 +42,7 @@ class LCCConfig:
     policy_context: Optional[str] = os.getenv("LCC_POLICY_CONTEXT")
     opa_url: Optional[str] = os.getenv("LCC_OPA_URL")
     opa_token: Optional[str] = os.getenv("LCC_OPA_TOKEN")
+    exclude_patterns: List[str] = field(default_factory=list)
     database_path: Path = field(
         default_factory=lambda: Path(os.getenv("LCC_DB_PATH", Path.home() / ".lcc" / "lcc.db"))
     )

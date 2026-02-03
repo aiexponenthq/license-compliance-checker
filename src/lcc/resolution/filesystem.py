@@ -91,6 +91,17 @@ class FileSystemResolver(Resolver):
         return patterns
 
     def _ignored(self, path: Path, root: Path, patterns: List[str]) -> bool:
+        # Check explicit config exclusions (glob patterns)
+        if self.config.exclude_patterns:
+            for pattern in self.config.exclude_patterns:
+                if path.match(pattern):
+                    return True
+                try:
+                    if path.relative_to(root).match(pattern):
+                        return True
+                except ValueError:
+                    pass
+
         relative = path.relative_to(root)
         for pattern in patterns:
             if fnmatch.fnmatch(str(relative), pattern):
