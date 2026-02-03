@@ -280,11 +280,13 @@ def handle_scan(args: argparse.Namespace) -> int:
         config.log_level = "DEBUG"
     if args.quiet:
         config.log_level = "ERROR"
+    if args.exclude:
+        config.exclude_patterns = args.exclude
 
     logging.basicConfig(level=getattr(logging, config.log_level.upper(), logging.INFO))
 
     cache = Cache(config, ttl_seconds=args.cache_ttl)
-    detectors = build_detectors()
+    detectors = build_detectors(config)
     resolvers = build_resolvers(config, cache)
     scanner = Scanner(detectors, resolvers, config)
 

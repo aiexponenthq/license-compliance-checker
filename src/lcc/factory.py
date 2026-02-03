@@ -29,7 +29,7 @@ from lcc.resolution.scancode import ScanCodeResolver
 from lcc.resolution.ai import AIResolver
 
 
-def build_detectors() -> List[Detector]:
+def build_detectors(config: LCCConfig) -> List[Detector]:
     """Return the detector set (Phase 1-3)."""
 
     return [
@@ -46,7 +46,7 @@ def build_detectors() -> List[Detector]:
         HuggingFaceDetector(),
         HuggingFaceDatasetDetector(),
         # Generic file detectors
-        LicenseFileDetector(),
+        LicenseFileDetector(config),
     ]
 
 
