@@ -17,6 +17,7 @@ build/
 # Test artifacts
 test-hf-model/
 test-*.sh
+lcc-report.json
 
 # Temporary documentation (phase status files)
 *_COMPLETE.md
