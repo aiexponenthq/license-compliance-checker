@@ -36,14 +36,6 @@ classifiers = [
   "Topic :: Software Development :: Build Tools",
   "Typing :: Typed",
 ]
-
-[project.urls]
-Homepage = "https://github.com/apundhir/license-compliance-checker"
-Repository = "https://github.com/apundhir/license-compliance-checker"
-Documentation = "https://github.com/apundhir/license-compliance-checker#readme"
-"Bug Tracker" = "https://github.com/apundhir/license-compliance-checker/issues"
-Changelog = "https://github.com/apundhir/license-compliance-checker/releases"
-
 dependencies = [
   "rich>=13.7.0",
   "requests>=2.31.0",
@@ -87,9 +79,9 @@ test = [
 
 [project.urls]
 Homepage = "https://github.com/apundhir/license-compliance-checker"
-Documentation = "https://github.com/apundhir/license-compliance-checker#readme"
 Repository = "https://github.com/apundhir/license-compliance-checker"
-Issues = "https://github.com/apundhir/license-compliance-checker/issues"
+Documentation = "https://github.com/apundhir/license-compliance-checker#readme"
+"Bug Tracker" = "https://github.com/apundhir/license-compliance-checker/issues"
 Changelog = "https://github.com/apundhir/license-compliance-checker/releases"
 
 [project.scripts]
