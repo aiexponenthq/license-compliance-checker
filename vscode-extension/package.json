@@ -1,0 +1,75 @@
+{
+  "name": "lcc-vscode",
+  "displayName": "LCC \u2014 License Compliance Checker",
+  "description": "Scan manifest files for license compliance issues inline in VS Code",
+  "version": "0.1.0",
+  "publisher": "aiexponent",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters", "Other"],
+  "keywords": ["license", "compliance", "sbom", "spdx", "open-source"],
+  "activationEvents": [
+    "onLanguage:pip-requirements",
+    "workspaceContains:**/requirements.txt",
+    "workspaceContains:**/package.json",
+    "workspaceContains:**/go.mod",
+    "workspaceContains:**/Cargo.toml",
+    "workspaceContains:**/Gemfile",
+    "workspaceContains:**/pom.xml",
+    "workspaceContains:**/*.csproj"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "lcc.scanWorkspace",
+        "title": "LCC: Scan Workspace"
+      },
+      {
+        "command": "lcc.scanCurrentFile",
+        "title": "LCC: Scan Current File"
+      }
+    ],
+    "configuration": {
+      "title": "LCC \u2014 License Compliance Checker",
+      "properties": {
+        "lcc.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable LCC scanning"
+        },
+        "lcc.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan manifest files on save"
+        },
+        "lcc.lccPath": {
+          "type": "string",
+          "default": "lcc",
+          "description": "Path to the lcc CLI executable"
+        },
+        "lcc.policy": {
+          "type": "string",
+          "default": "",
+          "description": "Policy name to apply (e.g., permissive, eu-ai-act-compliance)"
+        },
+        "lcc.threshold": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Confidence threshold for violations (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
