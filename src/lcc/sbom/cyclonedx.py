@@ -155,15 +155,15 @@ class CycloneDXGenerator:
         # Add hashes if available
         if "sha256" in component.metadata:
             hash_type = HashType(
-                algorithm=HashAlgorithm.SHA_256,
-                hash_value=component.metadata["sha256"],
+                alg=HashAlgorithm.SHA_256,
+                content=component.metadata["sha256"],
             )
             cdx_component.hashes.add(hash_type)
 
         if "sha512" in component.metadata:
             hash_type = HashType(
-                algorithm=HashAlgorithm.SHA_512,
-                hash_value=component.metadata["sha512"],
+                alg=HashAlgorithm.SHA_512,
+                content=component.metadata["sha512"],
             )
             cdx_component.hashes.add(hash_type)
 
@@ -276,7 +276,7 @@ class CycloneDXGenerator:
         if "repository_url" in component.metadata:
             refs.append(
                 ExternalReference(
-                    reference_type=ExternalReferenceType.VCS,
+                    type=ExternalReferenceType.VCS,
                     url=XsUri(component.metadata["repository_url"]),
                 )
             )
@@ -285,7 +285,7 @@ class CycloneDXGenerator:
         if "website" in component.metadata:
             refs.append(
                 ExternalReference(
-                    reference_type=ExternalReferenceType.WEBSITE,
+                    type=ExternalReferenceType.WEBSITE,
                     url=XsUri(component.metadata["website"]),
                 )
             )
@@ -294,7 +294,7 @@ class CycloneDXGenerator:
         if "documentation" in component.metadata:
             refs.append(
                 ExternalReference(
-                    reference_type=ExternalReferenceType.DOCUMENTATION,
+                    type=ExternalReferenceType.DOCUMENTATION,
                     url=XsUri(component.metadata["documentation"]),
                 )
             )

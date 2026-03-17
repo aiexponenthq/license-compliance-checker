@@ -192,7 +192,7 @@ def test_external_references(sample_scan_result):
     vcs_refs = [
         ref
         for ref in requests_comp.external_references
-        if ref.reference_type.name == "VCS"
+        if ref.type.name in ("VCS", "SCM")
     ]
     assert len(vcs_refs) > 0
 
@@ -207,7 +207,7 @@ def test_component_hashes(sample_scan_result):
 
     # Should have SHA-256 hash from metadata
     assert len(requests_comp.hashes) > 0
-    sha256_hashes = [h for h in requests_comp.hashes if h.algorithm.name == "SHA_256"]
+    sha256_hashes = [h for h in requests_comp.hashes if h.alg.name == "SHA_256"]
     assert len(sha256_hashes) > 0
 
 
@@ -374,7 +374,7 @@ def test_ai_model_component_type():
     assert len(components) == 1
 
     ai_comp = components[0]
-    assert ai_comp.component_type.name == "MACHINE_LEARNING_MODEL"
+    assert ai_comp.type.name == "MACHINE_LEARNING_MODEL"
 
 
 def test_dataset_component_type():
@@ -407,7 +407,7 @@ def test_dataset_component_type():
     assert len(components) == 1
 
     dataset_comp = components[0]
-    assert dataset_comp.component_type.name == "DATA"
+    assert dataset_comp.type.name == "DATA"
 
 
 def test_component_with_violations(sample_components):
