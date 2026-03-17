@@ -56,6 +56,88 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 ---
 
+## How to Use
+
+### 1. Scan a Local Project
+
+```bash
+# Basic scan — detects all dependencies and their licenses
+lcc scan /path/to/your/project
+
+# Scan with JSON output for CI/CD
+lcc scan . --format json --output report.json
+
+# Scan specific ecosystems only
+lcc scan . --format json --manifest requirements.txt --manifest package.json
+```
+
+### 2. Enforce Compliance Policies
+
+```bash
+# Block builds on any license violation
+lcc scan . --policy permissive
+
+# EU AI Act compliance for AI projects
+lcc scan . --policy eu-ai-act-compliance
+
+# NIST AI Risk Management Framework
+lcc scan . --policy nist-ai-rmf --context high_risk
+```
+
+### 3. Detect License Conflicts
+
+```bash
+# Check if dependencies are compatible with your project license
+lcc scan . --check-compatibility --project-license Apache-2.0
+
+# SaaS context — detects AGPL/SSPL issues
+lcc scan . --check-compatibility --project-license MIT --deployment-context saas
+```
+
+### 4. Generate SBOMs and Reports
+
+```bash
+# CycloneDX SBOM (with regulatory metadata for AI components)
+lcc sbom generate --input report.json --format cyclonedx --output sbom.json
+
+# SPDX SBOM
+lcc sbom generate --input report.json --format spdx --output sbom.spdx.json
+
+# HTML report for stakeholders
+lcc report --input report.json --format html --output compliance-report.html
+
+# Sign SBOM for supply chain attestation
+lcc sbom sign --input sbom.json --key private.gpg --output sbom.json.sig
+```
+
+### 5. Run the Full Stack (Dashboard + API)
+
+```bash
+export LCC_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+export POSTGRES_PASSWORD=$(python -c "import secrets; print(secrets.token_hex(16))")
+
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Dashboard: http://localhost:3000
+# API docs:  http://localhost:8000/docs
+```
+
+### 6. Integrate into CI/CD
+
+```yaml
+# .github/workflows/compliance.yml
+- uses: apundhir/license-compliance-checker/.github/actions/license-compliance@v1
+  with:
+    policy: 'permissive'
+    fail-on: 'violations'
+```
+
+### 7. Use the VS Code Extension
+
+Install the extension, then open any project with manifest files. Violations appear as red underlines on save. The status bar shows overall compliance status.
+
+---
+
 ## Key Features
 
 ### AI Model & Dataset Scanning
