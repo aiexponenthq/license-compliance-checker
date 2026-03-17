@@ -37,14 +37,14 @@
 
 | Task | Gap | Description | Effort | Status |
 |------|-----|------------|--------|--------|
-| 2.1 | GAP-06 | Enhanced model card parser — training data, limitations, metrics, env impact | 3 days | NOT STARTED |
-| 2.2 | GAP-06 | Regulatory metadata model — RegulatoryMetadata dataclass, Component extension | 2 days | NOT STARTED |
-| 2.3 | GAP-06 | EU AI Act Article 53 mapping engine — scan results → Art.53 obligations | 1 week | NOT STARTED |
-| 2.4 | GAP-06 | Regulatory policy templates — eu-ai-act, nist-ai-rmf, iso-42001 | 3 days | NOT STARTED |
-| 2.5 | GAP-06 | EU AI Act compliance report generator — regulatory_reporter.py | 4 days | NOT STARTED |
-| 2.6 | GAP-06 | SBOM regulatory extensions — regulatory:* properties in CycloneDX/SPDX | 2 days | NOT STARTED |
-| 2.7 | GAP-07 | Dashboard AI Model tab enhancements — RAIL panel, EU AI Act flags, filtering | 1 week | NOT STARTED |
-| 2.8 | GAP-07 | Dashboard EU AI Act export — compliance pack bundle download | 3 days | NOT STARTED |
+| 2.1 | GAP-06 | Enhanced model card parser — training data, limitations, metrics, env impact | 3 days | DONE |
+| 2.2 | GAP-06 | Regulatory metadata model — RegulatoryMetadata dataclass, Component extension | 2 days | DONE |
+| 2.3 | GAP-06 | EU AI Act Article 53 mapping engine — scan results → Art.53 obligations | 1 week | DONE |
+| 2.4 | GAP-06 | Regulatory policy templates — eu-ai-act, nist-ai-rmf, iso-42001 | 3 days | DONE |
+| 2.5 | GAP-06 | EU AI Act compliance report generator — regulatory_reporter.py | 4 days | DONE |
+| 2.6 | GAP-06 | SBOM regulatory extensions — regulatory:* properties in CycloneDX/SPDX | 2 days | DONE |
+| 2.7 | GAP-07 | Dashboard AI Model tab enhancements — RAIL panel, EU AI Act flags, filtering | 1 week | DONE |
+| 2.8 | GAP-07 | Dashboard EU AI Act export — compliance pack bundle download | 3 days | DONE |
 
 **Exit Criteria:**
 - [ ] Scan HuggingFace model → see EU AI Act obligations in dashboard
@@ -60,15 +60,11 @@
 
 | Task | Gap | Description | Effort | Status |
 |------|-----|------------|--------|--------|
-| 3.1 | GAP-09 | Component model depth tracking — dependency_depth, is_direct, parent_packages | 2 days | NOT STARTED |
-| 3.2 | GAP-09 | Python transitive resolution — poetry.lock requires, pip-tools output | 3 days | NOT STARTED |
-| 3.3 | GAP-09 | JavaScript transitive resolution — package-lock.json parent-child map | 3 days | NOT STARTED |
-| 3.4 | GAP-09 | Go transitive resolution — enhance indirect marker, go mod graph | 2 days | NOT STARTED |
-| 3.5 | GAP-09 | Java/Maven lock file support — dependency:tree parsing | 3 days | NOT STARTED |
-| 3.6 | GAP-09 | .NET lock file support — packages.lock.json parsing | 2 days | NOT STARTED |
-| 3.7 | GAP-10 | License compatibility matrix — SPDX-based rules, contamination detection | 1 week | NOT STARTED |
-| 3.8 | GAP-10 | Compatibility policy extensions — incompatible_pairs, copyleft_groups in YAML | 3 days | NOT STARTED |
-| 3.9 | GAP-09 | Dashboard dependency tree view — depth badges, filter by depth | 4 days | NOT STARTED |
+| 3.1 | GAP-09 | Component model depth tracking — all 8 detectors enhanced with depth metadata | 2 days | DONE |
+| 3.2-3.6 | GAP-09 | Per-language transitive resolution (Python, JS, Go, Rust, Ruby, Gradle) | merged into 3.1 | DONE |
+| 3.7 | GAP-10 | License compatibility matrix — SPDX-based rules, contamination detection | 1 week | DONE |
+| 3.8 | GAP-10 | Compatibility policy extensions + CLI integration | 3 days | DONE |
+| 3.9 | GAP-09 | Dashboard dependency depth view — badges, filter, parent tooltip | 4 days | DONE |
 | 3.10 | GAP-10 | Dashboard compatibility warnings — contamination banners, plain English | 3 days | NOT STARTED |
 
 **Exit Criteria:**
