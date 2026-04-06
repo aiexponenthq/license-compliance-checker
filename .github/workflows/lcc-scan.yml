@@ -57,14 +57,14 @@ jobs:
             --policy permissive \
             --context saas \
             --threshold 0.5 \
-            --exclude "tests" \
-            --exclude "dashboard" \
-            --exclude "node_modules" \
-            --exclude ".next" \
-            --exclude "dist" \
-            --exclude "package/dist" \
-            --exclude "package/lib" \
-            --exclude ".git" || true
+            --exclude "tests/**" \
+            --exclude "dashboard/**" \
+            --exclude "node_modules/**" \
+            --exclude ".next/**" \
+            --exclude "dist/**" \
+            --exclude "package/dist/**" \
+            --exclude "package/lib/**" \
+            --exclude ".git/**" || true
 
       - name: Display compliance report on failure
         if: failure()
