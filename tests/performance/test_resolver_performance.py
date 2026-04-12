@@ -7,7 +7,7 @@ import pytest
 from lcc.cache import Cache
 from lcc.config import LCCConfig
 from lcc.factory import build_resolvers
-from lcc.models import PackageInfo
+from lcc.models import Component, ComponentType
 
 
 @pytest.mark.performance
@@ -29,10 +29,10 @@ class TestResolverPerformance:
 
         # Common packages
         packages = [
-            PackageInfo(name="requests", version="2.31.0", ecosystem="python"),
-            PackageInfo(name="flask", version="3.0.0", ecosystem="python"),
-            PackageInfo(name="express", version="4.18.0", ecosystem="nodejs"),
-            PackageInfo(name="react", version="18.2.0", ecosystem="nodejs"),
+            Component(type=ComponentType.PYPI, name="requests", version="2.31.0"),
+            Component(type=ComponentType.PYPI, name="flask", version="3.0.0"),
+            Component(type=ComponentType.NPM, name="express", version="4.18.0"),
+            Component(type=ComponentType.NPM, name="react", version="18.2.0"),
         ]
 
         benchmark = performance_benchmark("Registry Resolver", iterations=20, warmup=3)
@@ -67,8 +67,8 @@ class TestResolverPerformance:
         resolvers = build_resolvers(config, cache)
 
         packages = [
-            PackageInfo(name="unknown-package-xyz", version="1.0.0", ecosystem="python"),
-            PackageInfo(name="test-package-123", version="2.0.0", ecosystem="nodejs"),
+            Component(type=ComponentType.PYPI, name="unknown-package-xyz", version="1.0.0"),
+            Component(type=ComponentType.NPM, name="test-package-123", version="2.0.0"),
         ]
 
         benchmark = performance_benchmark("Fallback Resolver Chain", iterations=10, warmup=2)
@@ -101,7 +101,7 @@ class TestResolverPerformance:
         cache = Cache(config)
         resolver = RegistryResolver(cache=cache)
 
-        pkg = PackageInfo(name="requests", version="2.31.0", ecosystem="python")
+        pkg = Component(type=ComponentType.PYPI, name="requests", version="2.31.0")
 
         # Prime the cache
         resolver.resolve(pkg)
@@ -138,7 +138,7 @@ class TestResolverPerformance:
         packages = []
         for i in range(50):
             packages.append(
-                PackageInfo(name=f"package-{i}", version="1.0.0", ecosystem="python")
+                Component(type=ComponentType.PYPI, name=f"package-{i}", version="1.0.0")
             )
 
         benchmark = performance_benchmark("Bulk Resolution (50 packages)", iterations=5, warmup=1)
@@ -181,7 +181,7 @@ class TestResolverScalability:
 
         for pkg_count in [10, 25, 50]:
             packages = [
-                PackageInfo(name=f"pkg-{i}", version="1.0.0", ecosystem="python")
+                Component(type=ComponentType.PYPI, name=f"pkg-{i}", version="1.0.0")
                 for i in range(pkg_count)
             ]
 
