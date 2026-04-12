@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "license-compliance-checker"
-version = "1.0.0"
+version = "1.1.0"
 description = "License Compliance Checker (LCC) - Enterprise-grade open source compliance tool."
 authors = [
   { name = "Ajay Pundhir" }
@@ -78,11 +78,11 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/apundhir/license-compliance-checker"
-Repository = "https://github.com/apundhir/license-compliance-checker"
-Documentation = "https://github.com/apundhir/license-compliance-checker#readme"
-"Bug Tracker" = "https://github.com/apundhir/license-compliance-checker/issues"
-Changelog = "https://github.com/apundhir/license-compliance-checker/releases"
+Homepage = "https://github.com/aiexponenthq/license-compliance-checker"
+Repository = "https://github.com/aiexponenthq/license-compliance-checker"
+Documentation = "https://github.com/aiexponenthq/license-compliance-checker#readme"
+"Bug Tracker" = "https://github.com/aiexponenthq/license-compliance-checker/issues"
+Changelog = "https://github.com/aiexponenthq/license-compliance-checker/releases"
 
 [project.scripts]
 lcc = "lcc.cli.main:main"

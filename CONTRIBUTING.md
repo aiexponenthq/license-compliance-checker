@@ -49,8 +49,8 @@ If you experience or witness unacceptable behavior, please report it to support@
 
 There are many ways to contribute to LCC:
 
-1. **Report Bugs**: Found a bug? [Open an issue](https://github.com/apundhir/license-compliance-checker/issues/new)
-2. **Suggest Features**: Have an idea? [Start a discussion](https://github.com/apundhir/license-compliance-checker/discussions)
+1. **Report Bugs**: Found a bug? [Open an issue](https://github.com/aiexponenthq/license-compliance-checker/issues/new)
+2. **Suggest Features**: Have an idea? [Start a discussion](https://github.com/aiexponenthq/license-compliance-checker/discussions)
 3. **Improve Documentation**: Fix typos, clarify instructions, add examples
 4. **Write Code**: Fix bugs, implement features, add tests
 5. **Review Pull Requests**: Provide feedback on open PRs
@@ -60,13 +60,13 @@ There are many ways to contribute to LCC:
 
 ### Good First Issues
 
-Look for issues labeled [`good-first-issue`](https://github.com/apundhir/license-compliance-checker/labels/good-first-issue) - these are suitable for newcomers.
+Look for issues labeled [`good-first-issue`](https://github.com/aiexponenthq/license-compliance-checker/labels/good-first-issue) - these are suitable for newcomers.
 
 ### Finding Something to Work On
 
-1. Check [open issues](https://github.com/apundhir/license-compliance-checker/issues)
-2. Look at [the roadmap](https://github.com/apundhir/license-compliance-checker/projects)
-3. Browse [discussions](https://github.com/apundhir/license-compliance-checker/discussions)
+1. Check [open issues](https://github.com/aiexponenthq/license-compliance-checker/issues)
+2. Look at [the roadmap](https://github.com/aiexponenthq/license-compliance-checker/projects)
+3. Browse [discussions](https://github.com/aiexponenthq/license-compliance-checker/discussions)
 4. Read [documentation](https://docs.lcc.dev) and identify gaps
 
 Before starting work on a significant change, please comment on the issue or create a discussion to coordinate with maintainers.
@@ -85,7 +85,7 @@ Before starting work on a significant change, please comment on the issue or cre
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/apundhir/license-compliance-checker.git
+git clone https://github.com/aiexponenthq/license-compliance-checker.git
 cd lcc
 ```
 
@@ -420,7 +420,7 @@ pytest -m "not slow"  # Skip slow tests
    ```
 
 7. **Create a Pull Request**:
-   - Go to https://github.com/apundhir/license-compliance-checker/pulls
+   - Go to https://github.com/aiexponenthq/license-compliance-checker/pulls
    - Click "New Pull Request"
    - Select your branch
    - Fill in the PR template
@@ -676,8 +676,8 @@ def resolve_license(component: Component, resolvers: List[Resolver]) -> str | No
 If you need help:
 
 1. Check [documentation](https://docs.lcc.dev)
-2. Search [existing issues](https://github.com/apundhir/license-compliance-checker/issues)
-3. Ask in [discussions](https://github.com/apundhir/license-compliance-checker/discussions)
+2. Search [existing issues](https://github.com/aiexponenthq/license-compliance-checker/issues)
+3. Ask in [discussions](https://github.com/aiexponenthq/license-compliance-checker/discussions)
 4. Email support@lcc.dev
 
 ### Recognition
@@ -693,7 +693,7 @@ Contributors are recognized in:
 
 Thank you for contributing to License Compliance Checker! Every contribution, no matter how small, helps make LCC better for everyone.
 
-Questions? Email support@lcc.dev or open a [discussion](https://github.com/apundhir/license-compliance-checker/discussions).
+Questions? Email support@lcc.dev or open a [discussion](https://github.com/aiexponenthq/license-compliance-checker/discussions).
 
 ---
 

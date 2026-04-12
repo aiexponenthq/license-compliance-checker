@@ -10,14 +10,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - SBOM API endpoints (currently CLI-only due to library migration)
 - Policy write operations via API (POST, PUT, DELETE endpoints)
-- PostgreSQL support for production deployments
-- Redis caching for distributed deployments
-- Prometheus metrics for monitoring
-- WebSocket support for real-time scan updates
 - Email notifications for policy violations
 - Slack/Teams integration for alerts
 - Support for additional languages (PHP, Swift, Kotlin)
 - Advanced SBOM features (vulnerability integration)
+
+---
+
+## [1.1.0] - 2026-04-12
+
+### Security
+- **POST /scans rate limited** — added `10/minute` rate limit; was previously unprotected
+- **CORS default hardened** — changed from `"*"` to `""` (must be explicitly configured via `LCC_ALLOWED_ORIGINS`)
+- **Admin reset scoped** — `/admin/reset` now only deletes LCC-namespaced Redis keys (`scan:*`, `lcc:*`), not `flushdb()`
+- **Worker path containment** — scan paths validated to stay within `LCC_WORKSPACE` or system temp directory; prevents path traversal
+- **Git history audited** — confirmed no secrets ever committed to repository
+
+### Added
+
+#### Agentic AI Era Capabilities
+- **HuggingFace Hub API resolver** (`src/lcc/resolution/hf_hub_resolver.py`) — scans Python, YAML, and JSON files for model ID references (`from_pretrained("org/model")`, `model_name_or_path`, `--model` args) and fetches license/metadata from the HF API without requiring local download
+- **GGUF/ONNX model detection** — `HuggingFaceDetector` now supports `.gguf` (Ollama/llama.cpp) and `.onnx` files; infers model family from filename; reads GGUF binary metadata header
+- **Dataset risk registry** — 15 datasets classified with commercial use risk; OpenAI API outputs, ChatGPT, ShareGPT, Books3, and The Pile flagged as high/critical risk with explanatory notes
+- **`--include-transitive` CLI flag** — surfaces transitive dependency analysis with lock file validation and guidance when no lock file is present
+
+#### Regulatory
+- **Honest Article 53 framing** — `ARTICLE_53_SCOPE_NOTE` added to all EU AI Act assessment outputs; clearly states this is audit evidence for documentation obligations, not a full legal compliance determination
+
+### Fixed
+- `datetime.utcnow()` → `datetime.now(UTC)` in `database/models.py` (Python 3.12 deprecation)
+- `warnings_count` now computed via `WarningAnalyzer.analyze_scan()` in the scan worker — was always 0 previously
+- `GET /scans/{id}/warnings` returns real warning analysis instead of an empty stub
+- Performance tests: corrected `Scanner(detectors, resolvers, config)` constructor signature (was passing wrong argument order)
+- Performance tests: corrected `scanner.scan(project_root=Path(...))` call signature
+- Integration tests: removed `500` from acceptable status codes — unhandled server errors are no longer considered passing
+- `tests/performance/test_resolver_performance.py`: replaced non-existent `PackageInfo` with `Component(type=ComponentType.PYPI/NPM, ...)`
+- GitHub Actions: removed invalid `secrets` context from `if:` conditions in `publish-pypi.yml` and `test-pypi.yml`
+- GitHub Actions: license scan step changed from hard-fail to warning-only for dev dependency violations
+
+### Tests
+- 393 tests passing (was 228 in v1.0.0)
+- Added: `tests/detection/test_hf_reference_detector.py` (23 tests)
+- Added: `tests/detection/test_gguf_detection.py` (10 tests)
+- Added: `tests/regulatory/test_dataset_risk_registry.py` (23 tests)
+
+---
+
+## [1.0.0] - 2026-02-06
+
+### Added
+- FastAPI-based REST API with JWT authentication and role-based access control
+- Async scan worker using ARQ + Redis for background job processing
+- PostgreSQL persistence via async SQLAlchemy
+- Multi-ecosystem detection: Python, Node.js, Go, Rust, Ruby, Java/Gradle, .NET
+- HuggingFace model and dataset detection with model card parsing
+- AI-specific license registry: RAIL, OpenRAIL, Llama, Gemma, Mistral, BigScience and more
+- EU AI Act Article 53 regulatory assessor
+- NIST AI RMF, ISO 42001, and US EO 14110 framework scaffolding
+- CycloneDX and SPDX SBOM generation
+- CLI with Rich output, JSON/SARIF/CSV formats
+- Prometheus metrics, structured JSON logging, request trace IDs
+- Docker Compose production deployment
+- GitHub Actions CI with Python 3.11 + 3.12 matrix
 
 ---
 
@@ -277,9 +331,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to LC
 
 - **Homepage**: https://lcc.dev
 - **Documentation**: https://docs.lcc.dev
-- **GitHub**: https://github.com/your-org/lcc
-- **Issue Tracker**: https://github.com/your-org/lcc/issues
-- **Discussions**: https://github.com/your-org/lcc/discussions
+- **GitHub**: https://github.com/aiexponenthq/license-compliance-checker
+- **Issue Tracker**: https://github.com/aiexponenthq/license-compliance-checker/issues
+- **Discussions**: https://github.com/aiexponenthq/license-compliance-checker/discussions
 - **Docker Hub**: https://hub.docker.com/r/lcc/lcc
 - **PyPI**: https://pypi.org/project/license-compliance-checker/
 

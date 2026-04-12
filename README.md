@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
-[![CI](https://github.com/apundhir/license-compliance-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/apundhir/license-compliance-checker/actions/workflows/ci.yml)
+[![CI](https://github.com/aiexponenthq/license-compliance-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/aiexponenthq/license-compliance-checker/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/license-compliance-checker.svg)](https://pypi.org/project/license-compliance-checker/)
 [![VS Code](https://img.shields.io/visual-studio-marketplace/v/lcc.license-compliance-checker.svg)](https://marketplace.visualstudio.com/items?itemName=lcc.license-compliance-checker)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -44,7 +44,7 @@ lcc scan . --project-license Apache-2.0 --context saas
 ### Install with Docker
 
 ```bash
-git clone https://github.com/apundhir/license-compliance-checker.git
+git clone https://github.com/aiexponenthq/license-compliance-checker.git
 cd license-compliance-checker
 
 export LCC_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
@@ -126,7 +126,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 ```yaml
 # .github/workflows/compliance.yml
-- uses: apundhir/license-compliance-checker/.github/actions/license-compliance@v1
+- uses: aiexponenthq/license-compliance-checker/.github/actions/license-compliance@v1
   with:
     policy: 'permissive'
     fail-on: 'violations'
@@ -341,7 +341,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - uses: apundhir/license-compliance-checker/.github/actions/license-compliance@v1
+      - uses: aiexponenthq/license-compliance-checker/.github/actions/license-compliance@v1
         with:
           path: '.'
           policy: 'strict'
@@ -429,7 +429,7 @@ graph TD
 
 ## Documentation
 
-- [Documentation Site](https://apundhir.github.io/license-compliance-checker/) -- full guides, tutorials, and API reference
+- [Documentation Site](https://aiexponenthq.github.io/license-compliance-checker/) -- full guides, tutorials, and API reference
 - [User Guide](docs/guides/user.md)
 - [Policy Guide](docs/guides/policies.md)
 - [Deployment Guide](docs/deployment/index.md)
