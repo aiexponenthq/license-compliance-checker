@@ -1,12 +1,19 @@
-# License Compliance Checker (LCC)
+<p align="center">
+  <a href="https://aiexponent.com"><img src=".github/brand/logo-full-light.png" alt="AiExponent — Building AI that deserves to be trusted" width="560"></a>
+</p>
 
-[![PyPI](https://img.shields.io/pypi/v/license-compliance-checker.svg)](https://pypi.org/project/license-compliance-checker/)
-[![CI](https://github.com/aiexponenthq/license-compliance-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/aiexponenthq/license-compliance-checker/actions)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Article%2053-gold.svg)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)
+<h1 align="center">License Compliance Checker (LCC)</h1>
+<p align="center"><em>Know what you ship. Know what you owe.</em></p>
 
-**Know what you ship. Know what you owe.**
+<p align="center">
+  <a href="https://pypi.org/project/license-compliance-checker/"><img src="https://img.shields.io/pypi/v/license-compliance-checker.svg" alt="PyPI"></a>
+  <a href="https://github.com/aiexponenthq/license-compliance-checker/actions"><img src="https://github.com/aiexponenthq/license-compliance-checker/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-0D5463.svg" alt="License: Apache 2.0"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11%2B-0D5463.svg" alt="Python 3.11+"></a>
+  <a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689"><img src="https://img.shields.io/badge/EU%20AI%20Act-Article%2053-0D5463.svg" alt="EU AI Act Article 53"></a>
+</p>
+
+---
 
 The only open-source scanner that combines dependency license detection, AI model license analysis, and EU AI Act Article 53 compliance — in a single tool.
 
