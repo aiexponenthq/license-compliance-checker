@@ -70,3 +70,7 @@ nginx/ssl/*.pem
 
 # OS files
 .DS_Store
+
+# Personal AI assistant instructions (never commit)
+CLAUDE.md
+.claude/
