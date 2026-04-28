@@ -74,3 +74,20 @@ nginx/ssl/*.pem
 # Personal AI assistant instructions (never commit)
 CLAUDE.md
 .claude/
+
+# --- Internal product-building docs (rule 1 of vibe-skills non-negotiables) ---
+# These artifacts support development; they are not for public distribution.
+PRD-*.md
+HLD-*.md
+LLD-*.md
+*-spec.md
+*-spec.draft.md
+roadmap*.md
+docs/plans/
+docs/internal/
+docs/superpowers/plans/
+docs/superpowers/specs/
+implementation-plan.md
+docs/implementation-plan.md
+internal-*.md
+*-internal.md
