@@ -17,7 +17,7 @@
 
 The only open-source scanner that combines dependency license detection, AI model license analysis, and EU AI Act Article 53 compliance — in a single tool.
 
-Built by [AiExponent LLC](https://aiexponent.com). Apache 2.0. Free alternative to FOSSA ($50K+/yr) and Black Duck ($30K+/yr).
+Built by [AI Exponent LLC](https://aiexponent.com). Apache 2.0. Free alternative to FOSSA ($50K+/yr) and Black Duck ($30K+/yr).
 
 ---
 
@@ -275,7 +275,7 @@ pytest
 
 [Apache 2.0](LICENSE) — free to use, modify, and distribute.
 
-Built by [AiExponent LLC](https://aiexponent.com) — `hello@aiexponent.com`
+Built by [AI Exponent LLC](https://aiexponent.com) — `hello@aiexponent.com`
 
 ---
 
