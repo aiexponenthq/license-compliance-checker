@@ -143,6 +143,8 @@ graph TD
 
 > **Scope note:** LCC generates audit evidence for Article 53 documentation obligations. It is not a legal compliance determination. Involve qualified legal counsel for final compliance assessment.
 
+> **Penalty band:** Non-compliance with Article 53 is sanctionable by the Commission under **Article 101(1)** at up to **€15M or 3% of global annual turnover**, whichever is higher. Note that GPAI fines are Commission-imposed under Art. 101 — distinct from the Art. 99 fines imposed by member-state market-surveillance authorities for high-risk-system violations. Source: [Regulation (EU) 2024/1689, Art. 101(1)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689).
+
 ---
 
 ## AI Model Detection
