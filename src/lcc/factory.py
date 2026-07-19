@@ -31,6 +31,7 @@ from lcc.detection.python import PythonDetector
 from lcc.detection.ruby import RubyDetector
 from lcc.detection.rust import CargoDetector
 from lcc.resolution.ai import AIResolver
+from lcc.resolution.ai_model import AIModelLicenseResolver
 from lcc.resolution.base import Resolver
 from lcc.resolution.clearlydefined import ClearlyDefinedResolver
 from lcc.resolution.filesystem import FileSystemResolver
@@ -66,9 +67,10 @@ def build_resolvers(config: LCCConfig, cache: Cache) -> list[Resolver]:
 
     if getattr(config, "offline", False):
         # In offline mode we only include resolvers that do not require network access.
-        return [FileSystemResolver(config), ScanCodeResolver(cache, config)]
+        return [AIModelLicenseResolver(), FileSystemResolver(config), ScanCodeResolver(cache, config)]
 
     return [
+        AIModelLicenseResolver(),
         ClearlyDefinedResolver(cache, config),
         RegistryResolver(cache, config),
         GitHubResolver(cache, config),
