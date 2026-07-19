@@ -16,12 +16,16 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import secrets
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
 from lcc.auth.core import User, UserRole, get_password_hash
+
+logger = logging.getLogger(__name__)
 
 
 class UserRepository:
@@ -70,24 +74,43 @@ class UserRepository:
                 )
             """)
 
-            # Create default admin user if no users exist
+            # Create the initial admin user if no users exist. The password
+            # comes from LCC_ADMIN_PASSWORD; without it a random one is generated
+            # and logged once so there is never a fixed default credential. The
+            # account must change its password on first login.
             cursor = conn.execute("SELECT COUNT(*) FROM users")
             if cursor.fetchone()[0] == 0:
                 now = datetime.now(UTC).isoformat()
+                username = os.getenv("LCC_ADMIN_USERNAME", "admin")
+                email = os.getenv("LCC_ADMIN_EMAIL", "admin@example.com")
+                password = os.getenv("LCC_ADMIN_PASSWORD")
+                generated = password is None
+                if generated:
+                    password = secrets.token_urlsafe(24)
+
                 conn.execute("""
                     INSERT INTO users (username, email, full_name, hashed_password, role, disabled, must_change_password, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    "admin",
-                    "admin@example.com",
+                    username,
+                    email,
                     "Administrator",
-                    get_password_hash("admin"),  # Default password, should be changed
+                    get_password_hash(password),
                     UserRole.ADMIN.value,
                     0,
-                    1,  # Force password change for default admin
+                    1,  # Force password change on first login
                     now,
                     now
                 ))
+
+                if generated:
+                    logger.warning(
+                        "No users found; created initial admin %r with a generated "
+                        "password: %s  (change it on first login; set "
+                        "LCC_ADMIN_PASSWORD to choose your own)",
+                        username,
+                        password,
+                    )
 
             conn.commit()
         finally:
@@ -122,7 +145,7 @@ class UserRepository:
                 hashed_password=row["hashed_password"],
                 role=UserRole(row["role"]),
                 disabled=bool(row["disabled"]),
-                must_change_password=bool(row["must_change_password"]) if "must_change_password" in row else False
+                must_change_password=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False  # noqa: SIM118
             )
         finally:
             conn.close()
@@ -156,7 +179,7 @@ class UserRepository:
                 hashed_password=row["hashed_password"],
                 role=UserRole(row["role"]),
                 disabled=bool(row["disabled"]),
-                must_change_password=bool(row["must_change_password"]) if "must_change_password" in row else False
+                must_change_password=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False  # noqa: SIM118
             )
         finally:
             conn.close()

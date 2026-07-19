@@ -335,6 +335,24 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         if payload.path and payload.repo_url:
             raise HTTPException(status_code=400, detail="Provide only one of 'path' or 'repo_url'")
 
+        # Scanning an arbitrary server-side filesystem path over the API would
+        # expose the host's files. It is disabled unless an operator explicitly
+        # opts in; the supported input is a validated GitHub repository URL.
+        allow_local_path = os.getenv("LCC_API_ALLOW_LOCAL_PATH", "").lower() in ("1", "true", "yes")
+        if payload.path and not allow_local_path:
+            raise HTTPException(
+                status_code=400,
+                detail="Scanning a local 'path' is disabled on the API; provide 'repo_url'",
+            )
+
+        if payload.repo_url:
+            from lcc.utils.git import validate_clone_url
+
+            try:
+                validate_clone_url(payload.repo_url, github_only=True)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
         # Create Scan record
         project_name = payload.project_name or (payload.repo_url.split("/")[-1].replace(".git", "") if payload.repo_url else Path(payload.path).name)
         scan = Scan(

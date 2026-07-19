@@ -150,29 +150,40 @@ def create_refresh_token(data: dict) -> str:
     return encoded_jwt
 
 
-def decode_token(token: str) -> TokenData:
+def decode_token(token: str, expected_type: str = "access") -> TokenData:
     """
     Decode and validate a JWT token.
 
     Args:
         token: JWT token string
+        expected_type: The token type this call requires ("access" or
+            "refresh"). A token whose "type" claim does not match is rejected,
+            so a refresh token cannot be used to authenticate a request.
 
     Returns:
         TokenData with decoded claims
 
     Raises:
-        HTTPException: If token is invalid or expired
+        HTTPException: If token is invalid, expired, or of the wrong type
     """
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         role: str = payload.get("role")
         exp: int = payload.get("exp")
+        token_type: str = payload.get("type")
 
         if username is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        if token_type != expected_type:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token type: expected {expected_type}",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
