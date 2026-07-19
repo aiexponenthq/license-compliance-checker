@@ -21,12 +21,25 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from cyclonedx.parser.json import JsonParser as CdxJsonParser
-from cyclonedx.parser.xml import XmlParser as CdxXmlParser
+from cyclonedx.schema import SchemaVersion
 from cyclonedx.validation.json import JsonStrictValidator
 from cyclonedx.validation.xml import XmlValidator
 from spdx_tools.spdx.parser.parse_anything import parse_file
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
+
+# Map CycloneDX specVersion strings to the library's SchemaVersion enum members.
+_CDX_SCHEMA_VERSIONS = {
+    "1.7": SchemaVersion.V1_7,
+    "1.6": SchemaVersion.V1_6,
+    "1.5": SchemaVersion.V1_5,
+    "1.4": SchemaVersion.V1_4,
+    "1.3": SchemaVersion.V1_3,
+    "1.2": SchemaVersion.V1_2,
+    "1.1": SchemaVersion.V1_1,
+    "1.0": SchemaVersion.V1_0,
+}
+# Fall back to the version the LCC generator emits when specVersion is absent.
+_CDX_DEFAULT_SCHEMA_VERSION = SchemaVersion.V1_5
 
 
 class ValidationError(Exception):
@@ -44,9 +57,7 @@ class SBOMValidator:
     - SPDX JSON, XML, YAML, Tag-Value
     """
 
-    def validate_cyclonedx(
-        self, file_path: Path, format: str = "json"
-    ) -> tuple[bool, list[str]]:
+    def validate_cyclonedx(self, file_path: Path, format: str = "json") -> tuple[bool, list[str]]:
         """
         Validate a CycloneDX SBOM.
 
@@ -58,36 +69,47 @@ class SBOMValidator:
             Tuple of (is_valid, list of error messages)
         """
         try:
-            # Parse the BOM
+            with open(file_path, encoding="utf-8") as f:
+                content = f.read()
+
+            schema_version = self._detect_cyclonedx_schema_version(content, format)
+
+            # cyclonedx-python-lib v11.x validates raw document strings against a
+            # given schema version. validate_str() returns None when the document
+            # is valid, or a ValidationError describing the first problem found.
             if format.lower() == "json":
-                parser = CdxJsonParser()
-                with open(file_path, encoding="utf-8") as f:
-                    content = f.read()
-                bom = parser.parse(content)
-
-                # Validate
-                validator = JsonStrictValidator(bom)
-                validation_errors = validator.validate()
+                validator = JsonStrictValidator(schema_version)
             elif format.lower() == "xml":
-                parser = CdxXmlParser()
-                with open(file_path, encoding="utf-8") as f:
-                    content = f.read()
-                bom = parser.parse(content)
-
-                # Validate
-                validator = XmlValidator(bom)
-                validation_errors = validator.validate()
+                validator = XmlValidator(schema_version)
             else:
                 return False, [f"Unsupported format: {format}"]
 
-            if validation_errors:
-                error_msgs = [str(err) for err in validation_errors]
-                return False, error_msgs
+            validation_error = validator.validate_str(content)
+
+            if validation_error is not None:
+                return False, [str(validation_error)]
 
             return True, []
 
         except Exception as e:
             return False, [f"Validation error: {str(e)}"]
+
+    def _detect_cyclonedx_schema_version(self, content: str, format: str) -> SchemaVersion:
+        """Determine the CycloneDX schema version to validate against."""
+        try:
+            if format.lower() == "json":
+                spec = json.loads(content).get("specVersion")
+                if spec:
+                    return _CDX_SCHEMA_VERSIONS.get(str(spec), _CDX_DEFAULT_SCHEMA_VERSION)
+            else:  # xml
+                import re
+
+                match = re.search(r"cyclonedx/(\d+\.\d+)", content)
+                if match:
+                    return _CDX_SCHEMA_VERSIONS.get(match.group(1), _CDX_DEFAULT_SCHEMA_VERSION)
+        except Exception:
+            pass
+        return _CDX_DEFAULT_SCHEMA_VERSION
 
     def validate_spdx(self, file_path: Path) -> tuple[bool, list[str]]:
         """
@@ -108,8 +130,7 @@ class SBOMValidator:
 
             if validation_messages:
                 error_msgs = [
-                    f"{msg.validation_message}: {msg.context}"
-                    for msg in validation_messages
+                    f"{msg.validation_message}: {msg.context}" for msg in validation_messages
                 ]
                 return False, error_msgs
 
@@ -233,8 +254,7 @@ class SBOMValidator:
                             expr = lic["expression"]
                             if not self._is_valid_spdx_expression(expr):
                                 warnings.append(
-                                    f"Component {comp['name']}: "
-                                    f"Invalid SPDX expression '{expr}'"
+                                    f"Component {comp['name']}: Invalid SPDX expression '{expr}'"
                                 )
 
             elif sbom_type == "spdx":
@@ -248,14 +268,12 @@ class SBOMValidator:
 
                     if declared and not self._is_valid_spdx_expression(declared):
                         warnings.append(
-                            f"Package {pkg['name']}: "
-                            f"Invalid declared license '{declared}'"
+                            f"Package {pkg['name']}: Invalid declared license '{declared}'"
                         )
 
                     if concluded and not self._is_valid_spdx_expression(concluded):
                         warnings.append(
-                            f"Package {pkg['name']}: "
-                            f"Invalid concluded license '{concluded}'"
+                            f"Package {pkg['name']}: Invalid concluded license '{concluded}'"
                         )
 
             return len(warnings) == 0, warnings

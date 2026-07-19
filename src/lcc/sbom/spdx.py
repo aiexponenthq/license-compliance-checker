@@ -25,6 +25,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from license_expression import ExpressionError, get_spdx_licensing
 from packageurl import PackageURL
 from spdx_tools.spdx.model import (
     Actor,
@@ -46,6 +47,24 @@ from spdx_tools.spdx.writer.write_anything import write_file
 
 from lcc.models import Component, ComponentResult, ComponentType, ScanResult
 from lcc.sbom.regulatory_properties import get_regulatory_annotation_text
+
+# spdx-tools 0.8.x types Package.license_* as parsed license expressions, not
+# strings. Reuse a single SPDX licensing instance to parse detected expressions.
+_SPDX_LICENSING = get_spdx_licensing()
+
+
+def _to_license_expression(expr: str | None):
+    """Parse a license string into an SPDX license expression.
+
+    Returns SpdxNoAssertion for an absent or syntactically unparseable
+    expression, matching SPDX semantics for an undetermined license.
+    """
+    if not expr:
+        return SpdxNoAssertion()
+    try:
+        return _SPDX_LICENSING.parse(expr, validate=False)
+    except (ExpressionError, ValueError):
+        return SpdxNoAssertion()
 
 
 class SPDXGenerator:
@@ -95,25 +114,24 @@ class SPDXGenerator:
         if not document_namespace:
             timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
             doc_name = project_name or "unknown"
-            document_namespace = (
-                f"https://lcc.example.org/spdx/{doc_name}-{timestamp}"
-            )
+            document_namespace = f"https://lcc.example.org/spdx/{doc_name}-{timestamp}"
 
-        # Create creation info
-        creation_info = self._create_creation_info(creator)
-
-        # Create document
+        # Determine document identity
         doc_name = project_name or "Software Package"
         doc_version = project_version or "unknown"
         spdx_id = "SPDXRef-DOCUMENT"
 
-        document = Document(
-            spdx_version="SPDX-2.3",
-            spdx_id=spdx_id,
+        # Create creation info (in spdx-tools 0.8.x the document-level metadata
+        # -- spdx_version, spdx_id, name, document_namespace -- lives on
+        # CreationInfo, and Document only takes creation_info plus the element
+        # lists).
+        creation_info = self._create_creation_info(
+            creator,
             name=f"{doc_name} {doc_version}",
             document_namespace=document_namespace,
-            creation_info=creation_info,
         )
+
+        document = Document(creation_info=creation_info)
 
         # Create root package
         root_package = Package(
@@ -158,22 +176,21 @@ class SPDXGenerator:
 
             # Add regulatory annotation for AI/ML components
             comp_result = next(
-                (
-                    cr
-                    for cr in scan_result.component_results
-                    if cr.component == component
-                ),
+                (cr for cr in scan_result.component_results if cr.component == component),
                 None,
             )
-            annotation = self._create_regulatory_annotation(
-                component, comp_result, package.spdx_id
-            )
+            annotation = self._create_regulatory_annotation(component, comp_result, package.spdx_id)
             if annotation is not None:
                 document.annotations.append(annotation)
 
         return document
 
-    def _create_creation_info(self, creator: str | None) -> CreationInfo:
+    def _create_creation_info(
+        self,
+        creator: str | None,
+        name: str = "LCC SBOM",
+        document_namespace: str = "https://lcc.example.org/temp",
+    ) -> CreationInfo:
         """Create SPDX creation info."""
         creators = [
             Actor(
@@ -200,8 +217,8 @@ class SPDXGenerator:
         return CreationInfo(
             spdx_version="SPDX-2.3",
             spdx_id="SPDXRef-DOCUMENT",
-            name="LCC SBOM",
-            document_namespace="https://lcc.example.org/temp",
+            name=name,
+            document_namespace=document_namespace,
             creators=creators,
             created=datetime.now(UTC),
         )
@@ -225,8 +242,8 @@ class SPDXGenerator:
             version=component.version if component.version != "*" else None,
             download_location=self._get_download_location(component),
             files_analyzed=False,
-            license_concluded=concluded_license or SpdxNoAssertion(),
-            license_declared=declared_license or SpdxNoAssertion(),
+            license_concluded=_to_license_expression(concluded_license),
+            license_declared=_to_license_expression(declared_license),
         )
 
         # Add description
@@ -259,9 +276,7 @@ class SPDXGenerator:
 
         return package
 
-    def _get_declared_license(
-        self, component: Component, scan_result: ScanResult
-    ) -> str | None:
+    def _get_declared_license(self, component: Component, scan_result: ScanResult) -> str | None:
         """Get declared license from component."""
         comp_result = next(
             (cr for cr in scan_result.component_results if cr.component == component),
@@ -275,9 +290,7 @@ class SPDXGenerator:
         licenses = sorted(comp_result.licenses, key=lambda x: x.confidence, reverse=True)
         return licenses[0].license_expression if licenses else None
 
-    def _get_concluded_license(
-        self, component: Component, scan_result: ScanResult
-    ) -> str | None:
+    def _get_concluded_license(self, component: Component, scan_result: ScanResult) -> str | None:
         """Get concluded license (same as declared for now)."""
         return self._get_declared_license(component, scan_result)
 
@@ -435,11 +448,10 @@ class SPDXGenerator:
         spdx_format = format_mapping.get(format.lower())
         if not spdx_format:
             raise ValueError(
-                f"Unsupported format: {format}. "
-                f"Use 'json', 'xml', 'yaml', or 'tag-value'."
+                f"Unsupported format: {format}. Use 'json', 'xml', 'yaml', or 'tag-value'."
             )
 
-        write_file(document, str(output_path), data_license=True, validate=False)
+        write_file(document, str(output_path), validate=False)
 
     def to_json(self, document: Document, pretty: bool = True) -> str:
         """
