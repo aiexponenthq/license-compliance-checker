@@ -20,12 +20,35 @@ from __future__ import annotations
 
 import fnmatch
 import io
+import re
 from collections.abc import Iterable
 from pathlib import Path
 
 from lcc.config import LCCConfig
 from lcc.models import Component, LicenseEvidence
 from lcc.resolution.base import Resolver
+
+# License signatures, most specific first. Each is matched on word
+# boundaries so a short identifier (GPL) is not detected inside a longer one
+# (LGPL, AGPL), and full license names are preferred over bare abbreviations.
+_LICENSE_SIGNATURES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"gnu affero general public license"), "AGPL"),
+    (re.compile(r"gnu lesser general public license"), "LGPL"),
+    (re.compile(r"gnu general public license"), "GPL"),
+    (re.compile(r"apache license"), "Apache-2.0"),
+    (re.compile(r"apache software license"), "Apache-2.0"),
+    (re.compile(r"\bmit license\b"), "MIT"),
+    (re.compile(r"bsd 3-clause|\bbsd-3-clause\b"), "BSD-3-Clause"),
+    (re.compile(r"bsd 2-clause|\bbsd-2-clause\b"), "BSD-2-Clause"),
+    (re.compile(r"mozilla public license"), "MPL-2.0"),
+    (re.compile(r"eclipse public license"), "EPL-2.0"),
+    (re.compile(r"creative commons"), "CC"),
+    (re.compile(r"\bisc license\b"), "ISC"),
+    (re.compile(r"\bthe unlicense\b|\bunlicense\b"), "Unlicense"),
+    (re.compile(r"\bagpl\b"), "AGPL"),
+    (re.compile(r"\blgpl\b"), "LGPL"),
+    (re.compile(r"\bgpl\b"), "GPL"),
+]
 
 
 class FileSystemResolver(Resolver):
@@ -149,26 +172,16 @@ class FileSystemResolver(Resolver):
                 _, _, identifier = line.partition("SPDX-License-Identifier:")
                 return identifier.strip()
 
-        # Common license patterns (order matters - most specific first)
-        license_patterns = [
-            ("apache license", "Apache-2.0"),
-            ("apache software license", "Apache-2.0"),
-            ("mit license", "MIT"),
-            ("bsd 3-clause", "BSD-3-Clause"),
-            ("bsd 2-clause", "BSD-2-Clause"),
-            ("gnu general public license", "GPL"),
-            ("gpl", "GPL"),
-            ("gnu lesser general public", "LGPL"),
-            ("lgpl", "LGPL"),
-            ("mozilla public license", "MPL-2.0"),
-            ("eclipse public license", "EPL-2.0"),
-            ("creative commons", "CC"),
-            ("isc license", "ISC"),
-            ("unlicense", "Unlicense"),
-        ]
+        # Identify the license from its signatures. The signature that appears
+        # earliest in the text wins, because a LICENSE file leads with its own
+        # license name; a license merely referenced later (for example a bundled
+        # dependency) does not override the file's declared license.
+        best_position: int | None = None
+        best_id: str | None = None
+        for regex, spdx_id in _LICENSE_SIGNATURES:
+            match = regex.search(content_lower)
+            if match is not None and (best_position is None or match.start() < best_position):
+                best_position = match.start()
+                best_id = spdx_id
 
-        for pattern, spdx_id in license_patterns:
-            if pattern in content_lower:
-                return spdx_id
-
-        return None
+        return best_id
