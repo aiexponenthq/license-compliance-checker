@@ -91,3 +91,4 @@ implementation-plan.md
 docs/implementation-plan.md
 internal-*.md
 *-internal.md
+deploy/k8s/secret.yaml
