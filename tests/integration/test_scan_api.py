@@ -45,12 +45,14 @@ class TestScanCreation:
             )
             assert get_response.status_code == 200
 
-    def test_create_scan_with_invalid_path(
+    def test_create_scan_with_local_path_is_rejected(
         self,
         test_app: TestClient,
-        admin_token: str
+        admin_token: str,
+        monkeypatch
     ):
-        """Test creating a scan with a nonexistent path."""
+        """Scanning a local filesystem path over the API is disabled by default."""
+        monkeypatch.setenv("LCC_API_ALLOW_LOCAL_PATH", "0")
         response = test_app.post(
             "/scans",
             headers={"Authorization": f"Bearer {admin_token}"},
@@ -60,12 +62,8 @@ class TestScanCreation:
             }
         )
 
-        # Scans are queued asynchronously; the API accepts the request (201) and
-        # the worker validates the path later. If path validation is added at the
-        # API layer it should return 400.
-        assert response.status_code in [201, 400]
-        if response.status_code == 400:
-            assert "does not exist" in response.json()["detail"].lower() or "not found" in response.json()["detail"].lower()
+        assert response.status_code == 400
+        assert "path" in response.json()["detail"].lower()
 
     def test_create_scan_without_path_or_repo(
         self,

@@ -329,7 +329,13 @@ def create_auth_router(user_repo: UserRepository) -> APIRouter:
         from lcc.auth.core import decode_token
 
         try:
-            token_data = decode_token(refresh_token)
+            token_data = decode_token(refresh_token, expected_type="refresh")
+
+            if token_data.role is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Refresh token missing role claim",
+                )
 
             # Create new tokens
             access_token = create_access_token(

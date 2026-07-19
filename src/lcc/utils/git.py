@@ -19,14 +19,58 @@ import logging
 import re
 import shutil
 from pathlib import Path
+from urllib.parse import urlparse
 
 from git import GitCommandError, Repo
 
 logger = logging.getLogger(__name__)
 
+# git accepts local transports (file://, ext::, the git-remote-ext helper) and
+# treats a leading dash as a command-line option. A clone URL that reaches
+# Repo.clone_from unchecked is therefore an SSRF / command-injection vector.
+_ALLOWED_CLONE_SCHEMES = {"http", "https"}
+
+
 class GitError(Exception):
     """Base exception for Git operations."""
     pass
+
+
+def validate_clone_url(repo_url: str, *, github_only: bool = False) -> str:
+    """Validate a repository URL before it is handed to git.
+
+    Args:
+        repo_url: The URL to clone.
+        github_only: When True, restrict the host to github.com.
+
+    Returns:
+        The stripped, validated URL.
+
+    Raises:
+        ValueError: If the URL uses a disallowed scheme or host, looks like a
+            command-line option, or contains control characters.
+    """
+    if not isinstance(repo_url, str) or not repo_url.strip():
+        raise ValueError("Repository URL must be a non-empty string")
+
+    url = repo_url.strip()
+
+    if url.startswith("-"):
+        raise ValueError(f"Invalid repository URL: {repo_url!r} looks like an option")
+    if any(char in url for char in "\r\n\t "):
+        raise ValueError("Repository URL must not contain whitespace or control characters")
+
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in _ALLOWED_CLONE_SCHEMES:
+        raise ValueError(
+            f"Unsupported URL scheme {parsed.scheme!r}. Only http and https are allowed."
+        )
+    if not parsed.hostname:
+        raise ValueError("Repository URL must include a host")
+    if github_only and parsed.hostname.lower() not in ("github.com", "www.github.com"):
+        raise ValueError("Only github.com repositories are allowed")
+
+    return url
 
 def clone_github_repo(repo_url: str, target_dir: Path) -> None:
     """
@@ -71,6 +115,8 @@ def clone_repository(repo_url: str, ref: str | None = None, depth: int = 1) -> P
         Path to cloned repository
     """
     import tempfile
+
+    repo_url = validate_clone_url(repo_url)
     target_dir = Path(tempfile.mkdtemp(prefix="lcc_repo_"))
 
     try:

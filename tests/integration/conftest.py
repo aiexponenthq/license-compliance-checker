@@ -31,6 +31,9 @@ def test_config(temp_dir: Path) -> LCCConfig:
     os.environ["LCC_DB_PATH"] = str(temp_dir / "test.db")
     os.environ["LCC_POLICY_DIR"] = str(temp_dir / "policies")
     os.environ["LCC_LOG_LEVEL"] = "ERROR"  # Reduce log noise in tests
+    # Local-path scanning is disabled on the API by default; the workflow tests
+    # scan local sample directories, so opt in for the test environment.
+    os.environ["LCC_API_ALLOW_LOCAL_PATH"] = "1"
 
     # Create necessary directories
     (temp_dir / "cache").mkdir(parents=True, exist_ok=True)
@@ -42,7 +45,7 @@ def test_config(temp_dir: Path) -> LCCConfig:
     yield config
 
     # Cleanup environment variables
-    for key in ["LCC_CACHE_DIR", "LCC_DB_PATH", "LCC_POLICY_DIR", "LCC_LOG_LEVEL"]:
+    for key in ["LCC_CACHE_DIR", "LCC_DB_PATH", "LCC_POLICY_DIR", "LCC_LOG_LEVEL", "LCC_API_ALLOW_LOCAL_PATH"]:
         os.environ.pop(key, None)
 
 
