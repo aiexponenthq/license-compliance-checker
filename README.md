@@ -18,7 +18,7 @@
 
 The only open-source scanner that combines dependency license detection, AI model license analysis, and EU AI Act Article 53 compliance — in a single tool.
 
-Built by [AI Exponent LLC](https://aiexponent.com). Apache 2.0. Free alternative to FOSSA ($50K+/yr) and Black Duck ($30K+/yr).
+Built by [AI Exponent LLC](https://aiexponent.com). Free and open source under Apache 2.0.
 
 ---
 
@@ -42,18 +42,14 @@ lcc scan . --project-license Apache-2.0 --context saas
 
 ---
 
-## Why LCC
+## What LCC does
 
-| | LCC | FOSSA | Black Duck |
-|---|---|---|---|
-| AI model license detection | ✅ | ❌ | ❌ |
-| EU AI Act Article 53 output | ✅ | ❌ | ❌ |
-| HuggingFace Hub API resolver | ✅ | ❌ | ❌ |
-| GGUF / ONNX model scanning | ✅ | ❌ | ❌ |
-| Training data risk registry | ✅ | ❌ | ❌ |
-| SBOM (CycloneDX + SPDX) | ✅ | ✅ | ✅ |
-| Policy-as-code (OPA / YAML) | ✅ | ✅ | ✅ |
-| Price | **Free** | $50K+/yr | $30K+/yr |
+- AI model license detection, including HuggingFace models resolved by Hub ID and GGUF / ONNX model files
+- EU AI Act Article 53 assessment and compliance-pack output
+- A training-data risk registry that flags datasets with commercial-use restrictions
+- SBOM generation in CycloneDX and SPDX
+- Policy-as-code with OPA Rego or YAML policies
+- Free and open source under Apache-2.0
 
 ---
 
@@ -65,7 +61,7 @@ graph TD
     DET["Detectors\nPython · Node.js · Go · Rust · Ruby\nJava · .NET · HuggingFace · GGUF/ONNX"]
     RES["Resolvers\nPyPI · npm · Crates.io · Maven\nGitHub API · ClearlyDefined · HF Hub API"]
     POL["Policy Engine\nOPA Rego · YAML policies\nPermissive · Strict · EU AI Act"]
-    REG["Regulatory Assessor\nEU AI Act Article 53\nNIST AI RMF · ISO 42001"]
+    REG["Regulatory Assessor\nEU AI Act Article 53"]
     OUT["Outputs\nJSON · HTML · Markdown · CSV\nCycloneDX SBOM · SPDX SBOM\nArticle 53 compliance pack"]
 
     CLI --> DET
@@ -116,7 +112,7 @@ graph LR
 
 ## EU AI Act Article 53 Coverage
 
-August 2025 — GPAI obligations are **already enforced**. Providers of general-purpose AI models must publish technical documentation. LCC automates evidence gathering for each sub-obligation:
+GPAI obligations under Article 53 have applied since **2 August 2025** for models placed on the market from that date; models placed earlier must comply by 2 August 2027. The Commission's supervision and enforcement powers, including fines, begin **2 August 2026**. LCC automates evidence gathering for each sub-obligation:
 
 ```mermaid
 graph TD
@@ -163,7 +159,7 @@ lcc scan /path/to/models
 lcc scan . --include-transitive --policy permissive
 ```
 
-**Supported AI license formats:** RAIL, OpenRAIL, Llama 2/3/3.1, Gemma, Mistral, Mixtral, BigScience, Falcon, Grok, DeepSeek, and 20+ more.
+**Supported AI license families:** the OpenRAIL family (including BigScience BLOOM and CreativeML variants), Llama 2 / 3 / 3.1, Gemma, and Mistral, plus provider licenses from Anthropic, OpenAI, Cohere, and AI21. The registry holds 17 AI license definitions and also recognises standard SPDX identifiers.
 
 **Training data risk registry:** Flags datasets with commercial use risk — OpenAI API outputs, ShareGPT, Books3, The Pile classified as high/critical risk.
 
@@ -223,30 +219,6 @@ lcc sbom generate scan-report.json --format spdx --output sbom.spdx.json
 
 # Sign with GPG for tamper-evidence
 lcc sbom sign sbom.cdx.json --key ~/.gnupg/key.gpg
-```
-
----
-
-## AiExponent Toolchain
-
-```mermaid
-graph LR
-    TF["TraceForge\n(Art. 10 data governance)"]
-    LCC["LCC\n(Art. 53 license compliance)"]
-    RAG["rag-benchmarking\n(Art. 15 accuracy)"]
-    RF["RiskForge\n(Art. 9 risk management)"]
-    TD["TransparencyDeck\n(Art. 13 documentation)"]
-
-    TF -->|"data provenance"| LCC
-    LCC -->|"license evidence"| RF
-    RAG -->|"accuracy evidence"| RF
-    RF -->|"rmf.json"| TD
-
-    style LCC fill:#c9a84c,color:#000
-    style RF fill:#1e3a5f,color:#fff
-    style TF fill:#1e3a5f,color:#fff
-    style RAG fill:#1e3a5f,color:#fff
-    style TD fill:#1e3a5f,color:#fff
 ```
 
 ---

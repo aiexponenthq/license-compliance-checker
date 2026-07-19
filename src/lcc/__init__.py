@@ -25,5 +25,5 @@ __all__ = ["__version__"]
 try:
     __version__ = version("license-compliance-checker")
 except PackageNotFoundError:  # pragma: no cover
-    __version__ = "1.1.0"
+    __version__ = "2.0.0"
 
