@@ -223,6 +223,27 @@ def build_parser() -> argparse.ArgumentParser:
     generate_parser.add_argument("--sign", action="store_true", help="Attach a SHA256 signature")
     generate_parser.set_defaults(func=handle_report_generate)
 
+    assess_parser = subparsers.add_parser(
+        "assess", help="Run an EU AI Act (Article 53) assessment on a scan"
+    )
+    assess_parser.add_argument("path", help="Project directory to scan or existing JSON report")
+    assess_parser.add_argument(
+        "--format", choices=["console", "json", "html"], default="console"
+    )
+    assess_parser.add_argument("--output", "-o", help="Output file path (for json/html)")
+    assess_parser.add_argument("--config", help="Path to configuration file")
+    assess_parser.set_defaults(func=handle_assess)
+
+    pack_parser = subparsers.add_parser(
+        "compliance-pack", help="Generate an EU AI Act compliance pack (4 files)"
+    )
+    pack_parser.add_argument("path", help="Project directory to scan or existing JSON report")
+    pack_parser.add_argument(
+        "--output", "-o", help="Parent directory for the pack (default: current directory)"
+    )
+    pack_parser.add_argument("--config", help="Path to configuration file")
+    pack_parser.set_defaults(func=handle_compliance_pack)
+
     server_parser = subparsers.add_parser("server", help="Run the REST API service")
     server_parser.add_argument(
         "--host",
@@ -1244,6 +1265,65 @@ def handle_report_generate(args: argparse.Namespace) -> int:
         console.print(f"[green]Report written to {args.output}[/green]")
     else:
         console.print(payload)
+    return 0
+
+
+def _load_findings_for_regulatory(args: argparse.Namespace) -> list[ComponentFinding]:
+    """Load scan findings from a JSON report, or by scanning a directory."""
+    path = Path(args.path)
+    if path.exists() and path.suffix.lower() == ".json":
+        report = _deserialize_report(json.loads(path.read_text(encoding="utf-8")))
+    else:
+        config_path = Path(args.config) if getattr(args, "config", None) else None
+        config = load_config(config_path)
+        cache = Cache(config, ttl_seconds=3600)
+        scanner = Scanner(build_detectors(config), build_resolvers(config, cache), config)
+        report = scanner.scan(path)
+    return report.findings
+
+
+def handle_assess(args: argparse.Namespace) -> int:
+    from lcc.regulatory import EUAIActAssessor, RegulatoryReporter
+
+    console = Console()
+    findings = _load_findings_for_regulatory(args)
+    regulatory_report = EUAIActAssessor().assess_scan(findings)
+    reporter = RegulatoryReporter(regulatory_report)
+
+    if args.output:
+        out = Path(args.output)
+        if args.format == "html":
+            reporter.to_html(out)
+        else:
+            reporter.to_json(out)
+        console.print(f"[green]EU AI Act assessment written to {out}[/green]")
+        return 0
+
+    if args.format == "json":
+        console.print(json.dumps(reporter.to_dict(), indent=2, default=str))
+        return 0
+
+    summary = regulatory_report.summary
+    console.print("[bold]EU AI Act (Article 53) Assessment[/bold]")
+    console.print(f"AI components:   {summary.get('total_ai_components', 0)}")
+    console.print(f"  Compliant:     {summary.get('compliant', 0)}")
+    console.print(f"  Partial:       {summary.get('partial', 0)}")
+    console.print(f"  Non-compliant: {summary.get('non_compliant', 0)}")
+    console.print(f"Compliance:      {summary.get('compliance_percentage', 0.0):.0f}%")
+    return 0
+
+
+def handle_compliance_pack(args: argparse.Namespace) -> int:
+    from lcc.regulatory import EUAIActAssessor, generate_compliance_pack
+
+    console = Console()
+    findings = _load_findings_for_regulatory(args)
+    regulatory_report = EUAIActAssessor().assess_scan(findings)
+    output_dir = Path(args.output) if args.output else Path.cwd()
+    pack_dir = generate_compliance_pack(regulatory_report, findings, output_dir)
+    console.print(f"[green]EU AI Act compliance pack generated:[/green] {pack_dir}")
+    for entry in sorted(pack_dir.iterdir()):
+        console.print(f"  - {entry.name}")
     return 0
 
 
