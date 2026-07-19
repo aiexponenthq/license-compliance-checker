@@ -14,7 +14,7 @@ def test_llm_client_fireworks_config():
     config.llm_model = "test-model"
     
     # Mock OpenAI to prevent network calls
-    with patch("lcc.ai.llm_client.OpenAI") as mock_openai:
+    with patch("openai.OpenAI") as mock_openai:
         client = LLMClient(config)
         
         assert client.enabled is True
@@ -35,7 +35,7 @@ def test_llm_client_local_config():
     config.llm_model = "llama2"
     
     # Mock OpenAI
-    with patch("lcc.ai.llm_client.OpenAI") as mock_openai:
+    with patch("openai.OpenAI") as mock_openai:
         client = LLMClient(config)
         
         assert client.enabled is True
