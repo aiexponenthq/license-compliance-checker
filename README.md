@@ -34,7 +34,7 @@ lcc scan .
 lcc scan . --policy eu-ai-act-compliance --format json
 
 # Generate a CycloneDX SBOM
-lcc sbom generate --input scan-report.json --format cyclonedx --output sbom.json
+lcc sbom generate scan-report.json --format cyclonedx --output sbom.json
 
 # Check GPL contamination in a SaaS context
 lcc scan . --project-license Apache-2.0 --context saas
@@ -206,8 +206,8 @@ lcc scan . --policy my-policy.yaml
     path: .
     policy: eu-ai-act-compliance
     fail-on: violations
-    format: sarif
-    output: license-scan.sarif
+    format: json
+    output: license-report.json
 ```
 
 ---
@@ -215,14 +215,14 @@ lcc scan . --policy my-policy.yaml
 ## SBOM Generation
 
 ```bash
-# CycloneDX 1.4 with EU AI Act regulatory extensions
-lcc sbom generate --input scan-report.json --format cyclonedx --output sbom.cdx.json
+# CycloneDX 1.5 with EU AI Act regulatory extensions
+lcc sbom generate scan-report.json --format cyclonedx --output sbom.cdx.json
 
 # SPDX 2.3
-lcc sbom generate --input scan-report.json --format spdx --output sbom.spdx.json
+lcc sbom generate scan-report.json --format spdx --output sbom.spdx.json
 
 # Sign with GPG for tamper-evidence
-lcc sbom sign --input sbom.cdx.json --key ~/.gnupg/key.gpg
+lcc sbom sign sbom.cdx.json --key ~/.gnupg/key.gpg
 ```
 
 ---
