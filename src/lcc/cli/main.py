@@ -29,16 +29,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import uvicorn
 from rich.console import Console
 from rich.progress import Progress
 from rich.table import Table
 
-from lcc.api.server import create_app
 from lcc.cache import Cache
 from lcc.config import LCCConfig, load_config
 from lcc.factory import build_detectors, build_resolvers
-from lcc.jobs.queue import Job, JobQueue, JobQueueWorker, QueueError
 from lcc.models import (
     Component,
     ComponentFinding,
@@ -1251,6 +1248,17 @@ def handle_report_generate(args: argparse.Namespace) -> int:
 
 
 def handle_server(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+
+        from lcc.api.server import create_app
+    except ImportError:
+        Console().print(
+            "[red]The API server requires the 'server' extra. Install it with: "
+            "pip install 'license-compliance-checker[server]'[/red]"
+        )
+        return 1
+
     config_path = Path(args.config).expanduser() if getattr(args, "config", None) else None
     if args.reload:
         if config_path:
@@ -1521,6 +1529,15 @@ def process_scan_job(job: Job, config: LCCConfig) -> dict[str, Any]:
 
 
 def handle_queue_submit(args: argparse.Namespace) -> int:
+    try:
+        from lcc.jobs.queue import JobQueue, QueueError
+    except ImportError:
+        Console().print(
+            "[red]The job queue requires the 'server' extra. Install it with: "
+            "pip install 'license-compliance-checker[server]'[/red]"
+        )
+        return 1
+
     console = Console()
     config_path = Path(args.config) if getattr(args, "config", None) else None
     config = load_config(config_path)
@@ -1552,6 +1569,15 @@ def handle_queue_submit(args: argparse.Namespace) -> int:
 
 
 def handle_queue_worker(args: argparse.Namespace) -> int:
+    try:
+        from lcc.jobs.queue import Job, JobQueue, JobQueueWorker, QueueError
+    except ImportError:
+        Console().print(
+            "[red]The job queue requires the 'server' extra. Install it with: "
+            "pip install 'license-compliance-checker[server]'[/red]"
+        )
+        return 1
+
     console = Console()
     config_path = Path(args.config) if getattr(args, "config", None) else None
     config = load_config(config_path)
@@ -1592,6 +1618,15 @@ def handle_queue_worker(args: argparse.Namespace) -> int:
 
 
 def handle_queue_status(args: argparse.Namespace) -> int:
+    try:
+        from lcc.jobs.queue import JobQueue, QueueError
+    except ImportError:
+        Console().print(
+            "[red]The job queue requires the 'server' extra. Install it with: "
+            "pip install 'license-compliance-checker[server]'[/red]"
+        )
+        return 1
+
     console = Console()
     config_path = Path(args.config) if getattr(args, "config", None) else None
     config = load_config(config_path)

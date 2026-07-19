@@ -15,9 +15,9 @@
 """
 LLM Client for interacting with local or remote LLM endpoints.
 """
-import logging
+from __future__ import annotations
 
-from openai import OpenAI, OpenAIError
+import logging
 
 from lcc.config import LCCConfig
 
@@ -32,7 +32,7 @@ class LLMClient:
     def __init__(self, config: LCCConfig):
         self.provider = config.llm_provider
         self.model = config.llm_model
-        self.client: OpenAI | None = None
+        self.client = None
 
         # LLM is disabled by default. Users must explicitly opt in.
         if self.provider == "disabled":
@@ -44,6 +44,16 @@ class LLMClient:
             )
 
         if self.enabled:
+            try:
+                from openai import OpenAI
+            except ImportError:
+                logger.warning(
+                    "openai package not installed; AI license analysis disabled. "
+                    "Install the 'ai' extra to enable it."
+                )
+                self.enabled = False
+                return
+
             api_key = config.llm_api_key
             base_url = config.llm_endpoint
 
@@ -123,9 +133,6 @@ class LLMClient:
                 logger.warning(f"Failed to parse JSON response: {content}")
                 return None
 
-        except OpenAIError as e:
-            logger.error(f"LLM API error: {e}")
-            return None
         except Exception as e:
-            logger.error(f"Unexpected error calling LLM: {e}")
+            logger.error(f"Error calling LLM: {e}")
             return None
