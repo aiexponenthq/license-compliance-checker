@@ -17,6 +17,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-07-19
+
+### Breaking changes
+- The default install is the scanner core only. The REST API, database, and job
+  queue move to the `server` extra and the AI provider to the `ai` extra. Install
+  `license-compliance-checker[all]` for the full stack.
+- `lcc server` binds to `127.0.0.1` by default. Pass `--host 0.0.0.0` to expose it
+  on all interfaces.
+- The scan API rejects an arbitrary local filesystem `path` by default. Provide a
+  GitHub `repo_url`, or set `LCC_API_ALLOW_LOCAL_PATH` to opt in.
+
+### Added
+- `lcc assess` and `lcc compliance-pack` commands for EU AI Act Article 53.
+- AI model license resolution from model-card metadata, with restrictive licenses
+  (Llama, Gemma, OpenRAIL) surfaced rather than passed silently.
+- A pip-audit dependency-vulnerability gate in CI.
+- `.pre-commit-hooks.yaml` so the scanner can run as a pre-commit hook.
+
+### Changed
+- The REST API compliance-pack download returns the same four-file pack as the
+  CLI: report JSON, report HTML, training-data summary, and copyright template.
+- CI enforces the test suite; a failing test now fails the build.
+
+### Fixed
+- The `lcc sbom` subcommands and `lcc report generate` crashed on invocation and
+  now run. The SBOM validator and generators work against cyclonedx v11 and
+  spdx-tools 0.8.
+- Offline mode no longer calls the HuggingFace Hub API.
+- A stale or invalid active policy no longer aborts a scan.
+- README command examples and capability claims were corrected: SBOM input is a
+  positional argument, there is no SARIF output, and the AI license list and
+  assessment scope now match the code.
+
+### Security
+- Removed the fixed default admin credential. The initial admin password comes
+  from `LCC_ADMIN_PASSWORD`, or is generated and logged once.
+- JWT tokens are validated by type, so a refresh token cannot authenticate a
+  request that expects an access token.
+- Repository clone URLs are validated, blocking non-http(s) transports and
+  command-line option injection.
+- Raised security floors for gitpython, python-multipart, starlette, urllib3,
+  idna, cryptography, mako, click, and pyjwt.
+
+---
+
 ## [1.1.0] - 2026-04-12
 
 ### Security
