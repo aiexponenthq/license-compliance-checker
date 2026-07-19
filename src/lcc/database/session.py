@@ -19,13 +19,21 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from lcc.config import load_config
+from lcc.config import LCCConfig, load_config
+
+
+def resolve_database_url(config: LCCConfig) -> str:
+    """Build the async SQLAlchemy URL for a given config.
+
+    Use PostgreSQL if configured, otherwise fall back to SQLite (for dev/tests).
+    Note: SQLite with asyncio requires the aiosqlite driver.
+    """
+    return config.database_url or f"sqlite+aiosqlite:///{config.database_path}"
+
 
 config = load_config()
 
-# Use PostgreSQL if configured, otherwise fallback to SQLite (for dev/tests)
-# Note: SQLite with asyncio requires aiosqlite driver
-DATABASE_URL = config.database_url or f"sqlite+aiosqlite:///{config.database_path}"
+DATABASE_URL = resolve_database_url(config)
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -40,6 +48,38 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+
+def configure_engine(database_url: str | None = None, echo: bool = False) -> None:
+    """(Re)create the module-level async engine and session factory.
+
+    Allows the application to bind to the database selected by the active
+    configuration (e.g. LCC_DB_PATH / LCC_DATABASE_URL) at startup, rather than
+    only the value that was present when this module was first imported.
+    """
+    global engine, AsyncSessionLocal, DATABASE_URL
+
+    if database_url is None:
+        database_url = resolve_database_url(load_config())
+
+    DATABASE_URL = database_url
+    engine = create_async_engine(database_url, echo=echo, future=True)
+    AsyncSessionLocal = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+
+
+async def init_models() -> None:
+    """Create the SQLAlchemy schema (tables) for the current engine if missing."""
+    # Imported here to avoid a circular import at module load time.
+    from lcc.database.models import Base
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
