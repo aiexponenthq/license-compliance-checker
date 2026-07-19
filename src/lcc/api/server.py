@@ -43,7 +43,7 @@ from lcc.auth.repository import UserRepository
 from lcc.config import load_config
 from lcc.database.models import Scan
 from lcc.database.repository import ScanRepository
-from lcc.database.session import get_db
+from lcc.database.session import configure_engine, get_db, init_models, resolve_database_url
 from lcc.policy import PolicyError, PolicyManager
 from lcc.worker.progress import ScanProgress
 from lcc.worker.progress_tracker import get_scan_progress
@@ -114,6 +114,44 @@ class PolicyUpdateRequest(BaseModel):
     format: str = Field("yaml", description="Content format: 'yaml' or 'json'")
 
 
+def _fake_arq_pool() -> ArqRedis:
+    """Build an in-memory fakeredis-backed arq pool (dev/test fallback)."""
+    import fakeredis.aioredis
+
+    return ArqRedis(connection_pool=fakeredis.aioredis.FakeRedis().connection_pool)
+
+
+async def _open_arq_pool(redis_url: str | None):
+    """Open the arq (Redis) job queue pool.
+
+    When no Redis URL is configured (local development / test runs) we return an
+    in-memory fakeredis-backed pool so the application can start and enqueue jobs
+    without a running Redis server. When a Redis URL *is* configured we connect
+    for real and do NOT silently fall back: a configured-but-unreachable Redis
+    must fail loudly rather than route jobs into an in-memory queue the worker
+    never sees.
+    """
+    if not redis_url:
+        return _fake_arq_pool()
+    return await create_pool(WorkerSettings.redis_settings)
+
+
+async def _open_redis(redis_url: str | None):
+    """Open a Redis connection for best-effort progress/cleanup reads.
+
+    When no Redis URL is configured (dev/test) we return an in-memory fake so
+    callers behave as if the relevant keys are simply absent. When a Redis URL is
+    configured we connect for real; connection errors surface to the caller
+    rather than being masked by a fake.
+    """
+    if redis_url:
+        return redis_from_url(redis_url)
+
+    import fakeredis.aioredis
+
+    return fakeredis.aioredis.FakeRedis()
+
+
 # App Factory
 def create_app(config_path: Path | None = None) -> FastAPI:
     if config_path is None:
@@ -121,6 +159,11 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         if env_config:
             config_path = Path(env_config)
     config = load_config(config_path)
+
+    # Bind the async SQLAlchemy engine to the database selected by the active
+    # configuration (LCC_DB_PATH / LCC_DATABASE_URL). The sync auth repository
+    # and the async scan repository then share a single database.
+    configure_engine(resolve_database_url(config), echo=config.log_level == "DEBUG")
 
     # Initialize legacy repositories (Auth) - still synchronous for now
     user_repository = UserRepository(config.database_path)
@@ -131,8 +174,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Startup: Create Redis pool
-        app.state.redis = await create_pool(WorkerSettings.redis_settings)
+        # Startup: ensure the database schema exists, then open the Redis pool.
+        await init_models()
+        app.state.redis = await _open_arq_pool(config.redis_url)
         yield
         # Shutdown: Close Redis pool
         await app.state.redis.close()
@@ -208,7 +252,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         await repo.delete_all_scans()
 
         # Clear Redis progress keys
-        redis = await redis_from_url(config.redis_url)
+        redis = await _open_redis(config.redis_url)
         keys = await redis.keys("scan:*")
         if keys:
             await redis.delete(*keys)
@@ -228,7 +272,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         await repo.delete_all_scans()
 
         # Clear only LCC-namespaced Redis keys (scan progress + cache)
-        redis = await redis_from_url(config.redis_url)
+        redis = await _open_redis(config.redis_url)
         for pattern in ("scan:*", "lcc:*"):
             keys = await redis.keys(pattern)
             if keys:
@@ -247,7 +291,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         scans = await scan_repo.list_scans(offset=skip, limit=limit)
 
         # Enrich running scans with progress data
-        redis = await redis_from_url(config.redis_url)
+        redis = await _open_redis(config.redis_url)
         results = []
 
         for s in scans:
@@ -393,7 +437,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         current_user: User = Depends(get_current_active_user)
     ) -> ScanProgress | None:
         """Get real-time progress for a running scan."""
-        redis = await redis_from_url(config.redis_url)
+        redis = await _open_redis(config.redis_url)
         try:
             progress = await get_scan_progress(redis, scan_id)
             return progress
@@ -502,6 +546,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                 lastUpdated=datetime.now(UTC).isoformat(),
                 disclaimer=str(policy.data.get("disclaimer", "")) or None,
             )
+        except HTTPException:
+            # Preserve intended status codes (e.g. 409 conflict, 400 mismatch).
+            raise
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -534,6 +581,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                 lastUpdated=datetime.now(UTC).isoformat(),
                 disclaimer=str(policy.data.get("disclaimer", "")) or None,
             )
+        except HTTPException:
+            # Preserve intended status codes (e.g. 404 not found).
+            raise
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 

@@ -47,11 +47,13 @@ def test_config(temp_dir: Path) -> LCCConfig:
 
 
 @pytest.fixture
-def test_app(test_config: LCCConfig) -> TestClient:
+def test_app(test_config: LCCConfig) -> Generator[TestClient, None, None]:
     """Create a test FastAPI application."""
     app = create_app(config_path=None)  # Will use env vars set by test_config
-    client = TestClient(app)
-    return client
+    # Use the client as a context manager so the app lifespan runs (which
+    # creates the database schema and opens the job-queue pool).
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture
