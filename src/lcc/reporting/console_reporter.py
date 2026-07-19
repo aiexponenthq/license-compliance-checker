@@ -75,6 +75,9 @@ class ConsoleReporter:
     def _classify_finding(self, finding) -> tuple[str, str]:
         if not finding.resolved_license:
             return "UNRESOLVED", "red"
+        metadata = finding.component.metadata if isinstance(finding.component.metadata, dict) else {}
+        if metadata.get("ai_license_restricted"):
+            return "RESTRICTED", "yellow"
         if finding.confidence >= self.threshold:
             return "PASS", "green"
         if finding.confidence >= self.threshold * 0.8:

@@ -1387,7 +1387,20 @@ def _resolve_policy_definition(
         return policy.data, policy.name
     active = manager.active_policy()
     if active:
-        policy = manager.load_policy(active)
+        # The active policy is ambient configuration, not an explicit request for
+        # this run. If it is missing or invalid, warn and continue without policy
+        # evaluation rather than aborting the scan. An explicit --policy (handled
+        # above) still fails loudly.
+        try:
+            policy = manager.load_policy(active)
+        except PolicyError as exc:
+            logging.getLogger(__name__).warning(
+                "Configured active policy %r could not be loaded (%s); "
+                "continuing without policy evaluation.",
+                active,
+                exc,
+            )
+            return None, None
         return policy.data, policy.name
     return None, None
 
