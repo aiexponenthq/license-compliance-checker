@@ -51,10 +51,13 @@ jobs:
       - name: Install package with test extras
         run: |
           python -m pip install --upgrade pip
-          pip install .[test]
+          pip install .[all,test]
 
       - name: Run test suite
-        run: pytest -q --disable-warnings tests/ -x
+        run: pytest -q --disable-warnings --ignore=tests/performance tests/ -x
+        env:
+          LCC_SECRET_KEY: "ci-test-key-not-for-production"
+          LCC_LLM_PROVIDER: "disabled"
 
   # -----------------------------------------------------------
   # 2. Build – produce sdist and wheel, upload as artifact
