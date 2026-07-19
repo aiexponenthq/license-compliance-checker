@@ -324,24 +324,27 @@ class HuggingFaceDetector(Detector):
 
             # Scan for license strings in the text portion
             text = header.decode("utf-8", errors="ignore")
+            # Model-specific licenses are checked before generic SPDX ids, and
+            # matched on whole words so a short id like "mit" is not detected
+            # inside unrelated bytes such as "commit" or "limit".
             known_licenses = [
-                "apache-2.0",
-                "apache 2.0",
-                "mit",
-                "llama 2",
                 "llama 3",
                 "llama3",
+                "llama 2",
                 "llama2",
                 "gemma",
                 "mistral",
-                "cc-by",
                 "openrail",
                 "rail",
                 "non-commercial",
+                "cc-by",
+                "apache-2.0",
+                "apache 2.0",
+                "mit",
             ]
             text_lower = text.lower()
             for lic in known_licenses:
-                if lic in text_lower:
+                if re.search(r"(?<![a-z0-9])" + re.escape(lic) + r"(?![a-z0-9])", text_lower):
                     metadata["detected_license_hint"] = lic
                     break
 
@@ -479,9 +482,10 @@ class HuggingFaceReferenceDetector(Detector):
                 logger.debug("Found model IDs %s in %s", ids, source_file)
             all_model_ids.update(ids)
 
+        offline = getattr(self.config, "offline", False)
         components: list[Component] = []
         for model_id in sorted(all_model_ids):
-            info = fetch_model_info(model_id, hf_token=self._hf_token)
+            info = None if offline else fetch_model_info(model_id, hf_token=self._hf_token)
 
             metadata: dict = {
                 "description": f"HuggingFace model referenced by ID: {model_id}",
