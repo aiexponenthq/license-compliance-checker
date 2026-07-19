@@ -1,0 +1,7 @@
+- id: lcc-scan
+  name: License Compliance Check
+  description: Scan project dependencies for license and EU AI Act compliance
+  entry: lcc scan
+  language: python
+  pass_filenames: false
+  always_run: true
