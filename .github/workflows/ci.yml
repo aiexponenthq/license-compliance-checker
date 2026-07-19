@@ -54,7 +54,6 @@ jobs:
 
       - name: Run tests
         run: pytest --cov=lcc --cov-report=xml -q --ignore=tests/performance
-        continue-on-error: true
         env:
           LCC_SECRET_KEY: "ci-test-key-not-for-production"
           LCC_LLM_PROVIDER: "disabled"
