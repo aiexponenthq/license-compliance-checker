@@ -27,6 +27,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 from rich.console import Console
@@ -1183,7 +1184,7 @@ def handle_report_generate(args: argparse.Namespace) -> int:
     config_path = Path(args.config) if getattr(args, "config", None) else None
     config = load_config(config_path)
     cache = Cache(config, ttl_seconds=3600)
-    scanner = Scanner(build_detectors(), build_resolvers(config, cache), config)
+    scanner = Scanner(build_detectors(config), build_resolvers(config, cache), config)
 
     path = Path(args.path)
     if path.exists() and path.suffix.lower() == ".json":
@@ -1445,7 +1446,7 @@ def process_scan_job(job: Job, config: LCCConfig) -> dict[str, Any]:
     cache_ttl = int(payload.get("cache_ttl", 3600))
     threshold = float(payload.get("threshold", 0.5))
     cache = Cache(config, ttl_seconds=cache_ttl)
-    scanner = Scanner(build_detectors(), build_resolvers(config, cache), config)
+    scanner = Scanner(build_detectors(config), build_resolvers(config, cache), config)
     report = scanner.scan(path)
     job_context = payload.get("context")
     if job_context:
@@ -1592,11 +1593,13 @@ def handle_queue_status(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_sbom_generate(args, console: Console) -> int:
+def handle_sbom_generate(args: argparse.Namespace) -> int:
     """Handle SBOM generation command."""
     from rich.panel import Panel
 
     from lcc.sbom import CycloneDXGenerator, SPDXGenerator
+
+    console = Console()
 
     try:
         console.print(f"[cyan]Generating {args.format.upper()} SBOM...[/cyan]")
@@ -1642,9 +1645,11 @@ def handle_sbom_generate(args, console: Console) -> int:
         return 1
 
 
-def handle_sbom_validate(args, console: Console) -> int:
+def handle_sbom_validate(args: argparse.Namespace) -> int:
     """Handle SBOM validation command."""
     from lcc.sbom import SBOMValidator
+
+    console = Console()
 
     try:
         sbom_file = Path(args.sbom_file)
@@ -1681,13 +1686,15 @@ def handle_sbom_validate(args, console: Console) -> int:
         return 1
 
 
-def handle_sbom_sign(args, console: Console) -> int:
+def handle_sbom_sign(args: argparse.Namespace) -> int:
     """Handle SBOM signing command."""
     import getpass
 
     from rich.panel import Panel
 
     from lcc.sbom import SBOMSigner
+
+    console = Console()
 
     try:
         sbom_file = Path(args.sbom_file)
@@ -1728,11 +1735,13 @@ def handle_sbom_sign(args, console: Console) -> int:
         return 1
 
 
-def handle_sbom_verify(args, console: Console) -> int:
+def handle_sbom_verify(args: argparse.Namespace) -> int:
     """Handle SBOM verification command."""
     from rich.panel import Panel
 
     from lcc.sbom import SBOMSigner
+
+    console = Console()
 
     try:
         sbom_file = Path(args.sbom_file)
@@ -1769,11 +1778,13 @@ def handle_sbom_verify(args, console: Console) -> int:
         return 1
 
 
-def handle_sbom_hash(args, console: Console) -> int:
+def handle_sbom_hash(args: argparse.Namespace) -> int:
     """Handle SBOM hashing command."""
     from rich.panel import Panel
 
     from lcc.sbom import SBOMSigner
+
+    console = Console()
 
     try:
         sbom_file = Path(args.sbom_file)
@@ -1794,9 +1805,11 @@ def handle_sbom_hash(args, console: Console) -> int:
         return 1
 
 
-def handle_sbom_list_keys(args, console: Console) -> int:
+def handle_sbom_list_keys(args: argparse.Namespace) -> int:
     """Handle listing GPG keys command."""
     from lcc.sbom import SBOMSigner
+
+    console = Console()
 
     try:
         gpg_home = Path(args.gpg_home) if args.gpg_home else None
